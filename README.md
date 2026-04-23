@@ -1,4 +1,4 @@
-# webforJ for AI
+# webforJ AI
 
 The webforJ plugin for AI coding assistants. Bundles the webforJ MCP
 server and a curated set of Skills so any MCP capable client can build
