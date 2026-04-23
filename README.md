@@ -101,6 +101,28 @@ copilot plugin marketplace remove webforj-ai
 </details>
 
 <details>
+<summary><b>VS Code + GitHub Copilot</b></summary>
+
+**Install**
+
+1. `⌘⇧P` -> `Chat: Install Plugin From Source`
+2. Paste `webforj/webforj-ai`
+
+**Update**
+
+```
+⌘⇧P -> Chat: Update Plugin -> webforj
+```
+
+**Uninstall**
+
+```
+⌘⇧P -> Chat: Uninstall Plugin -> webforj
+```
+
+</details>
+
+<details>
 <summary><b>Gemini CLI</b></summary>
 
 **Install**
@@ -393,72 +415,6 @@ cp -R webforj-ai/skills/* ~/.junie/skills/
 
   ```bash
   rm -rf ~/.junie/skills/webforj-*
-  ```
-
-</details>
-
-<details>
-<summary><b>VS Code + GitHub Copilot</b></summary>
-
-Requires GitHub Copilot enabled on your account. VS Code supports both
-the MCP server and the skills, but they install separately.
-
-**Install the MCP server**
-
-1. `⌘⇧P` -> `MCP: Add Server`
-2. Select `HTTP`
-3. Paste `https://mcp.webforj.com/mcp`
-4. Name the server `webforj-mcp`
-
-Or add it directly to `mcp.json`:
-
-```json
-{
-  "servers": {
-    "webforj-mcp": {
-      "type": "http",
-      "url": "https://mcp.webforj.com/mcp"
-    }
-  }
-}
-```
-
-Open Copilot Chat, switch to **Agent** mode, and type `#webforj-mcp` to
-confirm the tools load.
-
-**Install the skills**
-
-VS Code reads skills from `.github/skills/`, `.claude/skills/`, or
-`.agents/skills/` in your project (or the `~/.copilot/skills/` global
-folder for personal skills). Clone this repo and copy the skill
-directories into one of those paths:
-
-```bash
-git clone https://github.com/webforj/webforj-ai.git
-mkdir -p .github/skills
-cp -R webforj-ai/skills/* .github/skills/
-```
-
-Alternatively, open VS Code's Chat Customizations (gear icon in chat ->
-**Skills** tab) to browse and manage installed skills.
-
-**Update**
-
-- MCP server: remote URL, always serves the latest. No action needed.
-- Skills: re-copy from the repo:
-
-  ```bash
-  cd webforj-ai && git pull
-  cp -R skills/* ../.github/skills/
-  ```
-
-**Uninstall**
-
-- MCP server: `⌘⇧P` -> `MCP: List Servers` -> select `webforj-mcp` -> Remove.
-- Skills: remove copies with:
-
-  ```bash
-  rm -rf .github/skills/webforj-*
   ```
 
 </details>
