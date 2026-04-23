@@ -101,7 +101,36 @@ copilot plugin marketplace remove webforj-ai
 </details>
 
 <details>
-<summary><b>OpenAI Codex CLI</b> </summary>
+<summary><b>Gemini CLI</b></summary>
+
+**Install**
+
+```bash
+gemini extensions install https://github.com/webforj/webforj-ai
+```
+
+Verify:
+
+```bash
+gemini extensions list
+```
+
+**Update**
+
+```bash
+gemini extensions update webforj
+```
+
+**Uninstall**
+
+```bash
+gemini extensions uninstall webforj
+```
+
+</details>
+
+<details>
+<summary><b>OpenAI Codex CLI</b></summary>
 
 **Install**
 
@@ -142,7 +171,7 @@ Then re-enable the plugin from `/plugins` if needed.
 
 **Uninstall**
 
-Inside a `codex` session, `/plugins` → select `webforj` → press Space to
+Inside a `codex` session, `/plugins` -> select `webforj` -> press Space to
 disable. Then from the shell:
 
 ```bash
@@ -152,31 +181,60 @@ codex plugin marketplace remove webforj-ai
 </details>
 
 <details>
-<summary><b>Gemini CLI</b></summary>
+<summary><b>Cursor</b></summary>
 
-**Install**
+**Install the MCP server**
 
-```bash
-gemini extensions install https://github.com/webforj/webforj-ai
+Add to `~/.cursor/mcp.json` (user scope) or `.cursor/mcp.json` (project
+scope):
+
+```json
+{
+  "mcpServers": {
+    "webforj-mcp": {
+      "url": "https://mcp.webforj.com/mcp"
+    }
+  }
+}
 ```
 
-Verify:
+Or via the UI: **Settings → Developer → Edit Config → MCP Tools** and
+paste the same config.
+
+**Install the skills**
+
+Cursor auto-discovers skills from `~/.cursor/skills/<skill-name>/` (user
+scope) or `.cursor/skills/<skill-name>/` (project scope). It also reads
+`.agents/skills/`, `.claude/skills/`, and `.codex/skills/` for cross
+client compatibility. Clone this repo and copy the skill folders:
 
 ```bash
-gemini extensions list
+git clone https://github.com/webforj/webforj-ai.git
+mkdir -p ~/.cursor/skills
+cp -R webforj-ai/skills/* ~/.cursor/skills/
 ```
+
+Or import via Cursor's UI: **Settings → Rules → Add Rule → Remote Rule
+(Github)**, then paste a URL pointing to a skill's subdirectory.
 
 **Update**
 
-```bash
-gemini extensions update webforj
-```
+- MCP server: remote URL, always serves the latest. No action needed.
+- Skills:
+
+  ```bash
+  cd webforj-ai && git pull
+  cp -R skills/* ~/.cursor/skills/
+  ```
 
 **Uninstall**
 
-```bash
-gemini extensions uninstall webforj
-```
+- MCP server: remove the `webforj-mcp` entry from `~/.cursor/mcp.json`.
+- Skills:
+
+  ```bash
+  rm -rf ~/.cursor/skills/webforj-*
+  ```
 
 </details>
 
@@ -211,8 +269,8 @@ mkdir -p ~/.kiro/skills
 cp -R webforj-ai/skills/* ~/.kiro/skills/
 ```
 
-Or import via Kiro IDE: Agent Steering & Skills section → **+** →
-**Import a skill** → **GitHub**, then paste a URL pointing to a skill's
+Or import via Kiro IDE: Agent Steering & Skills section -> **+** ->
+**Import a skill** -> **GitHub**, then paste a URL pointing to a skill's
 subdirectory in this repo.
 
 **Update**
@@ -248,7 +306,7 @@ extension:
 goose configure
 ```
 
-Select `Add Extension` → `Remote Extension (Streamable HTTP)`. When
+Select `Add Extension` -> `Remote Extension (Streamable HTTP)`. When
 prompted:
 
 - Name: `webforj-mcp`
@@ -347,7 +405,7 @@ the MCP server and the skills, but they install separately.
 
 **Install the MCP server**
 
-1. `⌘⇧P` → `MCP: Add Server`
+1. `⌘⇧P` -> `MCP: Add Server`
 2. Select `HTTP`
 3. Paste `https://mcp.webforj.com/mcp`
 4. Name the server `webforj-mcp`
@@ -381,7 +439,7 @@ mkdir -p .github/skills
 cp -R webforj-ai/skills/* .github/skills/
 ```
 
-Alternatively, open VS Code's Chat Customizations (gear icon in chat →
+Alternatively, open VS Code's Chat Customizations (gear icon in chat ->
 **Skills** tab) to browse and manage installed skills.
 
 **Update**
@@ -396,7 +454,7 @@ Alternatively, open VS Code's Chat Customizations (gear icon in chat →
 
 **Uninstall**
 
-- MCP server: `⌘⇧P` → `MCP: List Servers` → select `webforj-mcp` → Remove.
+- MCP server: `⌘⇧P` -> `MCP: List Servers` -> select `webforj-mcp` -> Remove.
 - Skills: remove copies with:
 
   ```bash
