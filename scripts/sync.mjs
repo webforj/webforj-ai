@@ -21,6 +21,7 @@ const plugins = [
     mirror: [
       [".mcp.json",      ".mcp.json"],
       ["skills",         "skills"],
+      ["logo.png",       "logo.png"],
     ],
   },
 ];

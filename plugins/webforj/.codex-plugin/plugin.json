@@ -30,6 +30,8 @@
       "Write"
     ],
     "websiteURL": "https://webforj.com",
+    "composerIcon": "./logo.png",
+    "logo": "./logo.png",
     "defaultPrompt": [
       "Scaffold a new webforJ project called MyApp",
       "Style a dashboard using DWC design tokens",
