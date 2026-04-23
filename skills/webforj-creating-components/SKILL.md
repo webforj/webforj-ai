@@ -116,13 +116,13 @@ export CEM=/tmp/webforj-cem/custom-elements.json
 Then parse it with the extraction script (`--help` for all options):
 
 ```bash
-node scripts/extract_components.mjs --file "$CEM" --list
-node scripts/extract_components.mjs --file "$CEM" --tag x-button
+node scripts/extract-components.mjs --file "$CEM" --list
+node scripts/extract-components.mjs --file "$CEM" --tag x-button
 ```
 
 **No CEM and no supported framework** (vanilla JS, proprietary, etc.):
 Read the component's docs, API reference, or source code. Write the spec JSON
-manually. Run `node scripts/extract_components.mjs --format` to see the
+manually. Run `node scripts/extract-components.mjs --format` to see the
 expected format.
 
 ### Step 2: Write Java wrappers
