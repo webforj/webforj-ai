@@ -39,13 +39,24 @@ Read Java source to find every component, theme, and expanse in use. Search for 
 
 **Do not write any CSS until you complete this step for every component.**
 
-```bash
-node <skill-path>/scripts/component-styles.mjs <name>
-```
+Call the webforJ MCP server:
 
-Accepts Java class names or DWC tags. Use `--list` for all valid tags, `--map` for Java -> DWC mappings.
+- `styles_get_component` with `name` set to a DWC tag (`dwc-button`) or
+  a webforJ Java class name (`Button`, `TextField`). Returns the real
+  CSS custom properties, `::part()` names, reflected attributes, and
+  slots for the target `webforjVersion`.
+- `styles_get_component` with `mode: "list"` to enumerate every valid
+  DWC tag for that version.
+- `styles_get_component` with `mode: "map"` for the Java class -> DWC
+  tag mapping.
 
-The output tells you which CSS variables, `::part()` names, and reflected attributes exist. **Use only names from the output.** Anything else silently fails.
+For global tokens (palette, surfaces, spacing, typography) call
+`styles_list_tokens` with a `prefix` (e.g. `--dwc-color-primary-`) or
+`contains` (e.g. `seed`) filter. The returned list is verbatim and
+complete for the filter passed - do not invent "implied" tokens.
+
+**Use only names returned by these tools.** Anything else silently fails.
+Never carry tokens across versions.
 
 ### Step 4: Write CSS
 
@@ -99,17 +110,16 @@ No bare `dwc-button` selector — breaks themed variants.
 
 ### Step 5: Validate
 
-Run the token validator on all CSS and Java files:
-
-```bash
-node <skill-path>/scripts/validate-tokens.mjs <file-or-directory>
-```
-
-This checks every `--dwc-*` reference against the real global tokens and all component CSS variables. Any made-up token is flagged with file, line, and name.
+Call `styles_validate_tokens` with the generated or edited file
+`content` (CSS, Java, MDX, or Markdown). It checks every `--dwc-*`
+reference against the real global tokens and all component CSS variables
+for the target `webforjVersion`, and flags any invalid token with its
+line number and ranked similar-name suggestions. Run this before writing
+any stylesheet to disk.
 
 Then manually verify:
 
-1. Every `::part()` name appears in that component's script output
+1. Every `::part()` name appears in that component's `styles_get_component` output
 2. No `::part()` where a CSS variable covers the same thing
 3. No bare tag selectors on components with `theme`/`expanse` — use `:not([theme])`
 4. Zero hardcoded colors outside `:root` — every color a `var()` reference
@@ -204,9 +214,19 @@ Themes: `light` · `dark` · `dark-pure` · `system`. Set via `@AppTheme("dark")
 
 ## Resources
 
-### scripts/
-- **[component-styles.mjs](scripts/component-styles.mjs)**: Fetches CSS styling metadata for any DWC component. Accepts Java class names or DWC tags. Shows CSS custom properties, shadow parts, reflected attributes, and slots. Use `--list` for all tags, `--map` for Java -> DWC mappings.
-- **[validate-tokens.mjs](scripts/validate-tokens.mjs)**: Validates all `--dwc-*` references in CSS/Java/MD/MDX files. Catches made-up tokens, wrong palette names, invalid shade numbers. Exit 0 = all valid, 1 = issues found.
+### MCP tools (webforJ MCP server)
+- **`get_versions`** — list available webforJ majors so styling tools can
+  target the right catalog. Call first when the target version is unknown.
+- **`styles_get_component`** — CSS styling surface for a DWC component
+  (CSS vars, parts, reflected attributes, slots). Also supports
+  `mode: "list"` for all tags and `mode: "map"` for Java -> DWC mappings.
+- **`styles_list_tokens`** — authoritative catalog of global `--dwc-*`
+  tokens (palette seeds, shades, surfaces, spacing, typography, borders).
+  Filter with `prefix` or `contains`.
+- **`styles_validate_tokens`** — validate every `--dwc-*` reference in
+  CSS/Java/MDX/MD text against the real DWC tokens and component CSS
+  variables. Run before writing generated stylesheets to disk.
+- **`create_theme`** — generate a full DWC theme from a primary HSL color.
 
 ### references/
 - **[colors.md](references/colors.md)** — OKLCH shade scale, text contrast, border/focus patterns

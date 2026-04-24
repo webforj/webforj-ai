@@ -8,9 +8,14 @@ framework.
 ## What's Included
 
 - **webforJ MCP server** (remote, hosted at `https://mcp.webforj.com/mcp`)
-  - `webforj-create-project`: scaffold a webforJ Maven project from an archetype
-  - `webforj-create-theme`: generate DWC color themes from a primary color
-  - `webforj-knowledge-base`: semantic search across webforJ docs, JavaDoc, and examples
+  - `get_versions`: which webforJ versions you can target.
+  - `create_project`: spin up a fresh webforJ Maven project.
+  - `search_knowledge_base`: look things up in the webforJ knowledge base.
+  - `get_document`: pull the full page behind a search hit.
+  - `styles_get_component`: everything you can style on a DWC component — CSS variables, parts, reflected attributes, slots.
+  - `styles_list_tokens`: the full list of `--dwc-*` design tokens.
+  - `styles_validate_tokens`: check your CSS (or Java, MDX, Markdown) for `--dwc-*` typos before you ship it.
+  - `create_theme`: turn a brand color into a full DWC theme.
 - **webforj-creating-components** skill: build reusable webforJ components
   from core components, third party Web Component libraries, or plain
   JavaScript libraries.
@@ -516,9 +521,14 @@ syntax:
 
 MCP tools work automatically in every client:
 
-- *"Scaffold a new webforJ sidemenu project called CustomerPortal."* (uses `webforj-create-project`)
-- *"Generate a theme from brand color #6366f1."* (uses `webforj-create-theme`)
-- *"Search webforJ docs for @Route annotation and navigation."* (uses `webforj-knowledge-base`)
+- *"What webforJ versions are available?"* (uses `get_versions`)
+- *"Scaffold a new webforJ sidemenu project called CustomerPortal."* (uses `create_project`)
+- *"Search webforJ docs for @Route annotation and navigation."* (uses `search_knowledge_base`)
+- *"Show me the full migration guide from the last search result."* (uses `get_document`)
+- *"What CSS parts and variables does dwc-button expose?"* (uses `styles_get_component`)
+- *"List every --dwc-space-* token."* (uses `styles_list_tokens`)
+- *"Validate my app.css - any unknown --dwc-* tokens?"* (uses `styles_validate_tokens`)
+- *"Generate a theme from brand color #6366f1."* (uses `create_theme`)
 
 ## License
 
