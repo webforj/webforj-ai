@@ -35,7 +35,8 @@ Upgrade Progress:
 - [ ] 5. Apply the recipe
 - [ ] 6. Resolve every TODO webforJ comment
 - [ ] 7. Compile and run tests
-- [ ] 8. Remove the plugin from pom.xml
+- [ ] 8. Sweep for CSS / styling regressions (recipe does NOT touch CSS)
+- [ ] 9. Remove the plugin from pom.xml
 ```
 
 ### 1. Confirm versions
@@ -121,7 +122,24 @@ mvn test
 
 If compile fails on an unflagged webforJ symbol, call `webforj-mcp:search_knowledge_base` with the symbol name and target major. Apply, re-run.
 
-### 8. Clean up
+### 8. Sweep for CSS / styling regressions
+
+The OpenRewrite recipe rewrites Java but does NOT touch CSS files or `@InlineStyleSheet` blocks. Major upgrades that change the DWC design system (most notably 25 -> 26, which moves DWC v1 -> v2) require a manual sweep of stylesheets for renamed/removed/repurposed tokens and shifted defaults.
+
+For 25 -> 26 specifically, defer to the styling skill's migration reference:
+
+- `webforj-styling-apps/references/v25-to-v26-css.md` — token-by-token deltas, behavior changes (palette generator, dark mode, focus ring, ripple removal, font scale shift), and a 6-step grep-driven checklist for the most common edits.
+
+For any upgrade, after compile + tests pass, validate every stylesheet under the new version's token catalog:
+
+```bash
+# Find every stylesheet and inline-style block in the project
+grep -rn -E "@StyleSheet|@InlineStyleSheet" src
+```
+
+For each found stylesheet (file or inline block), call `webforj-mcp:styles_validate_tokens` with the target `webforjVersion`. Fix any token the validator flags using the suggestions it returns.
+
+### 9. Clean up
 
 Remove the `rewrite-maven-plugin` block from `pom.xml`. The `webforj-rewrite` artifact is only needed during migration. Commit the pom change with the source rewrites.
 

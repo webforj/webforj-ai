@@ -1,16 +1,11 @@
 ---
 name: webforj-styling-apps
-description: "Use this skill for ANYTHING that changes the look of a webforJ app: colors, themes, palettes, branding, dark mode, button styles, fonts, spacing, shadows, borders, layouts, component appearance, or any CSS. Trigger phrases: 'make my app look like X', 'theme my app', 'change the colors', 'change the primary color', 'reskin', 'rebrand', 'use my brand color', 'apply dark mode', 'add a custom theme', 'why does this look wrong', 'restyle the buttons', 'change the font', 'use a hex color', 'override a CSS variable', 'style a dwc-component', 'use ::part()', 'pick spacing tokens', 'fix hardcoded color'. Routes through the webforj-mcp tools (get_versions, styles_list_tokens, styles_get_component, styles_validate_tokens, create_theme) so token names are version-correct, covers both DWC v1 (webforJ 25 and prior) and DWC v2 (webforJ 26+), and enforces preferring overrides of the built-in light/dark/dark-pure themes over a new custom theme."
+description: "Use this skill for ANYTHING that changes the look of a webforJ app: colors, themes, palettes, branding, dark mode, button styles, fonts, spacing, shadows, borders, layouts, component appearance, or any CSS. Trigger phrases: 'make my app look like X', 'theme my app', 'change the colors', 'change the primary color', 'reskin', 'rebrand', 'use my brand color', 'apply dark mode', 'add a custom theme', 'why does this look wrong', 'restyle the buttons', 'change the font', 'use a hex color', 'override a CSS variable', 'style a dwc-component', 'use ::part()', 'pick spacing tokens', 'fix hardcoded color'. Routes through the webforj-mcp tools (get_versions, styles_list_tokens, styles_get_component, styles_validate_tokens, create_theme) so token names are version-correct, covers both webforJ 25 and prior and webforJ 26 and later, and enforces preferring overrides of the built-in light/dark/dark-pure themes over a new custom theme."
 ---
 
 # Styling webforJ Apps
 
-webforJ ships a design system named **DWC**. Two generations exist:
-
-- **DWC v1** — webforJ 25 and prior.
-- **DWC v2** — webforJ 26 and later.
-
-The agent must resolve the target webforJ version first and pass it to every styling-MCP tool call. The MCP server has a separate token catalog per major version, so wrong-version calls return `unknown_version`, and a token name that exists in one major may not be defined in another.
+webforJ ships a design system named **DWC**. The token catalog changed significantly between webforJ 25 and webforJ 26: webforJ 26 added new tokens (`-seed`, `on-{name}-text`), renamed others, and dropped a few (notably `-c`, the contrast-threshold token). The agent must resolve the target webforJ version first and pass it to every styling-MCP tool call. The MCP server has a separate token catalog per major version, so wrong-version calls return `unknown_version`, and a token name that exists in one major may not be defined in another.
 
 ## Hard rules
 
@@ -18,8 +13,10 @@ The agent must resolve the target webforJ version first and pass it to every sty
 2. **Resolve the target webforJ version once per task before any token decision.** Read `<webforj.version>` from the project's `pom.xml`. If unknown, call `webforj-mcp:get_versions` and ask the user.
 3. **Use the MCP server as the token catalog.** Do not invent token names. Do not enumerate tokens from memory in generated code.
 4. **Validate generated CSS before writing it to disk.** Run `webforj-mcp:styles_validate_tokens` with the resolved `webforjVersion` and fix every flagged token using the returned suggestions.
-5. **Never carry token names across major versions.** A token that exists in DWC v1 may be absent or renamed in DWC v2 (and vice versa). Always re-list the catalog for the new version.
+5. **Never carry token names across major versions.** A token that exists in webforJ 25 may be absent or renamed in webforJ 26+ (and vice versa). Always re-list the catalog for the new version.
 6. **Prefer overriding the built-in themes over creating a custom theme.** The default `light` theme is overridden at `:root`. The `dark` and `dark-pure` themes are overridden under `html[data-app-theme="dark"]` and `html[data-app-theme="dark-pure"]`. Only introduce a `html[data-app-theme='your-name']` custom theme when the requested behavior cannot be expressed by overriding the existing themes.
+7. **Prefer variation tokens over raw step numbers when the result should adapt to dark mode.** `--dwc-color-primary`, `-dark`, `-light`, `-text`, `-alt` shift the underlying step automatically across modes. Raw step references (`--dwc-color-primary-50`) freeze the lightness in both modes.
+8. **Scope token overrides with a wrapper selector when retuning a section.** Setting `--dwc-color-primary-seed` (webforJ 26+) or `--dwc-color-primary-h`/`-s` on a wrapper element retunes everything inside it without affecting the rest of the app. Do not edit the root selector to retune one section.
 
 ## MCP tool routing
 
@@ -42,12 +39,12 @@ The agent must resolve the target webforJ version first and pass it to every sty
 
 | Task | Approach |
 |---|---|
-| Color reskin (one or more palettes) | redefine palette config tokens at `:root` (see DWC v1 vs v2 below) |
-| Direct color override (DWC v2 only) | `--dwc-color-{palette}-seed: <CSS color>` at `:root` |
+| Color reskin (one or more palettes) | redefine palette config tokens at `:root` (see webforJ 25 vs v2 below) |
+| Direct color override (webforJ 26+ only) | `--dwc-color-{palette}-seed: <CSS color>` at `:root` |
 | Adjust the light theme | redefine palette config tokens at `:root` (preferred) |
 | Adjust the built-in dark or dark-pure theme | redefine palette config tokens under `html[data-app-theme="dark"]` or `html[data-app-theme="dark-pure"]` (preferred) |
 | Custom theme (only when overriding the built-in themes is not enough) | `html[data-app-theme='your-name'] { ... }` |
-| Custom dark theme (DWC v2 only, when a custom theme is required) | the same selector plus `--dwc-dark-mode: 1` and `color-scheme: dark` |
+| Custom dark theme (webforJ 26+ only, when a custom theme is required) | the same selector plus `--dwc-dark-mode: 1` and `color-scheme: dark` |
 | Component-level styling | look up the component with `styles_get_component`; override its CSS variables on the tag selector; fall back to `::part()` only when no variable covers it |
 | Layout / spacing | `--dwc-space-*` |
 | Component sizing | `--dwc-size-*` |
@@ -57,8 +54,11 @@ The agent must resolve the target webforJ version first and pass it to every sty
 | Shadows | `--dwc-shadow-*` |
 | Transitions and easings | `--dwc-transition-*`, `--dwc-ease-*` |
 | Disabled / focus | `--dwc-disabled-*`, `--dwc-focus-ring-*` |
-| Reskin from a brand color (DWC v2) | a single `--dwc-color-{palette}-seed` line at `:root` is enough — the seed regenerates all shades, variations, text-contrast tokens, borders, and focus rings automatically |
-| Reskin from a brand color (DWC v1) | redefine `-h` / `-s` (and optional `-c`) at `:root`, or call `webforj-mcp:create_theme` to generate the full variation stylesheet |
+| Component semantic color (button, badge, alert, ...) | `component.setTheme(ButtonTheme.PRIMARY)` (or the typed enum for the component). Values: `DEFAULT`, `PRIMARY`, `SUCCESS`, `WARNING`, `DANGER`, `INFO`, `GRAY`. Independent of the active app theme. |
+| Component size in a row of controls | `component.setExpanse(Expanse.X)` where X is one of `XSMALL`, `SMALL`, `MEDIUM`, `LARGE`, `XLARGE` (some components extend to `XXSMALL`/`XXLARGE`/`XXXLARGE`). |
+| Section-scoped reskin (one wrapper) | set the seed (`--dwc-color-{palette}-seed` in webforJ 26+, or `-h`/`-s`) on a wrapper class. Do not edit `:root`. |
+| Reskin from a brand color (webforJ 26+) | a single `--dwc-color-{palette}-seed` line at `:root` is enough — the seed regenerates all shades, variations, text-contrast tokens, borders, and focus rings automatically |
+| Reskin from a brand color (webforJ 25) | redefine `-h` / `-s` (and optional `-c`) at `:root`, or call `webforj-mcp:create_theme` to generate the full variation stylesheet |
 | Generated full theme stylesheet | `webforj-mcp:create_theme` (mainly useful when you want the tool's full file output rather than writing seed lines yourself) |
 
 ## Workflow
@@ -76,10 +76,7 @@ The agent must resolve the target webforJ version first and pass it to every sty
 
 Read `<webforj.version>` from the project's `pom.xml`. You need the full `major.minor` string (e.g. `"25.12"`, `"26.00"`, or `"26.00-SNAPSHOT"`). That exact string is what every styling-MCP tool requires. The MCP server's argument validator regex is `^\d+\.\d+(-SNAPSHOT)?$`, so bare `"25"` or `"26"` is rejected.
 
-The major number determines which DWC generation the work targets:
-
-- `25.x` and earlier -> **DWC v1**
-- `26.x` and later -> **DWC v2**
+The major number determines which token catalog the work targets. webforJ 25 and prior share one catalog; webforJ 26 and later share another. See the "webforJ 25 and prior" and "webforJ 26 and later" sections below for the per-major differences.
 
 If the version is not in `pom.xml`, or the version is not in the MCP server's indexed majors, call `webforj-mcp:get_versions` and ask the user.
 
@@ -162,7 +159,7 @@ The four built-in app themes are `light`, `dark`, `dark-pure`, `system`. Apply w
 
 When the work is in a stylesheet, the project's existing convention for loading CSS into the app applies. Do not invent a load mechanism, use whatever the project already does.
 
-## Universal facts (DWC v1 and v2)
+## Universal facts (all versions)
 
 The following are present in both versions' canonical docs. Always confirm specific token names with `styles_list_tokens` for the resolved version.
 
@@ -183,7 +180,7 @@ Two text-contrast siblings per shade:
 
 ### Variation tokens
 
-Both versions document the per-palette variation tokens `--dwc-color-{palette}` (normal), `-dark`, `-light`, and `-alt`, plus matching `text` and `on-*-text` siblings. The "groups" framing differs: DWC v1 describes four groups (Normal, Dark, Light, Alt); DWC v2 describes three groups (normal, dark, light), with `-alt` listed as an additional token.
+Both versions document the per-palette variation tokens `--dwc-color-{palette}` (normal), `-dark`, `-light`, and `-alt`, plus matching `text` and `on-*-text` siblings. The "groups" framing differs: webforJ 25 describes four groups (Normal, Dark, Light, Alt); webforJ 26+ describes three groups (normal, dark, light), with `-alt` listed as an additional token.
 
 ### Surfaces
 
@@ -225,9 +222,9 @@ Pseudo-classes on parts work (`::part(label):hover`).
 
 Any `--dwc-*` token can be overridden by redefining it within a CSS selector that targets where it should apply (`:root`, a tag selector for component scope). `var()` accepts a fallback. From Java, `setStyle("--dwc-...","value")` updates a variable on a component instance.
 
-## DWC v1 (webforJ 25 and prior)
+## webforJ 25 and prior
 
-The following are documented for DWC v1 and either differ in DWC v2 or do not exist in DWC v2.
+The following are documented for webforJ 25 and either differ in webforJ 26+ or do not exist in webforJ 26+.
 
 ### Palette configuration
 
@@ -300,9 +297,9 @@ Line heights: `--dwc-font-line-height-{2xs..2xl}` plus base `--dwc-font-line-hei
 
 Default body font size is `--dwc-font-size-s`.
 
-## DWC v2 (webforJ 26+)
+## webforJ 26 and later
 
-The following are documented for DWC v2 and either are new or differ from DWC v1.
+The following are documented for webforJ 26+ and either are new or differ from webforJ 25.
 
 ### Palette configuration
 
@@ -313,7 +310,7 @@ Each palette is generated from two seed variables:
 | `--dwc-color-{palette}-h` | hue (0–360) |
 | `--dwc-color-{palette}-s` | saturation (0%–100%) |
 
-There is no `-c` (contrast threshold) variable in DWC v2. WCAG AA contrast for generated text colors is met automatically.
+There is no `-c` (contrast threshold) variable in webforJ 26+. WCAG AA contrast for generated text colors is met automatically.
 
 Each palette also exposes `--dwc-color-{palette}-seed` as a **direct color override**. By default it is constructed from `-h` and `-s`. Setting it directly with any valid CSS color bypasses the hue/saturation system:
 
@@ -405,7 +402,7 @@ Documented usage: `s` for items inside containers, `m` for structural borders be
 
 ### Standard easings
 
-Added in DWC v2 alongside the extended set:
+Added in webforJ 26 alongside the extended set:
 
 ```
 --dwc-ease           cubic-bezier(0.4, 0, 0.2, 1)
@@ -463,16 +460,16 @@ html[data-app-theme="new-dark-theme"] {
 | List global `--dwc-*` tokens for a version | `webforj-mcp:styles_list_tokens(webforjVersion, reasoning, prefix?, contains?)` |
 | Get a component's CSS vars / parts / slots / reflected attributes | `webforj-mcp:styles_get_component(webforjVersion, reasoning, name?, mode?)` (`mode`: `"lookup"` default, `"list"`, `"map"`) |
 | Validate every `--dwc-*` reference in CSS / Java / Markdown / MDX | `webforj-mcp:styles_validate_tokens(webforjVersion, reasoning, content)` |
-| Reskin from a brand color (DWC v2) | one line: `--dwc-color-{palette}-seed: <CSS color>` at `:root` |
-| Generate a full theme stylesheet (mostly useful for DWC v1) | `webforj-mcp:create_theme(webforjVersion, reasoning, primaryColor: [h, s, l], themeName?)` |
+| Reskin from a brand color (webforJ 26+) | one line: `--dwc-color-{palette}-seed: <CSS color>` at `:root` |
+| Generate a full theme stylesheet (mostly useful for webforJ 25) | `webforj-mcp:create_theme(webforjVersion, reasoning, primaryColor: [h, s, l], themeName?)` |
 | Adjust the light theme (preferred over a custom theme) | redefine palette config tokens at `:root` |
 | Adjust the dark theme (preferred over a custom theme) | redefine palette config tokens under `html[data-app-theme="dark"]` |
 | Adjust the dark-pure theme (preferred over a custom theme) | redefine palette config tokens under `html[data-app-theme="dark-pure"]` |
-| Reskin one palette (DWC v1 and v2) | `--dwc-color-{palette}-h` and `--dwc-color-{palette}-s` |
-| Tune contrast threshold (DWC v1 only) | `--dwc-color-{palette}-c` |
-| Direct color override (DWC v2 only) | `--dwc-color-{palette}-seed` |
+| Reskin one palette (all versions) | `--dwc-color-{palette}-h` and `--dwc-color-{palette}-s` |
+| Tune contrast threshold (webforJ 25 and prior only) | `--dwc-color-{palette}-c` |
+| Direct color override (webforJ 26+ only) | `--dwc-color-{palette}-seed` |
 | Custom theme (only when overriding the built-ins is insufficient) | `html[data-app-theme='your-name']` |
-| Custom dark theme (DWC v2 only, when a custom theme is needed) | as above plus `--dwc-dark-mode: 1` and `color-scheme: dark` |
+| Custom dark theme (webforJ 26+ only, when a custom theme is needed) | as above plus `--dwc-dark-mode: 1` and `color-scheme: dark` |
 | Apply a theme | `@AppTheme("name")` or `App.setTheme("name")` |
 
 ## Resources

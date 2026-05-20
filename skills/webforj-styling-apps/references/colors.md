@@ -2,7 +2,7 @@
 
 For the actual token catalog of the resolved version, call `webforj-mcp:styles_list_tokens` with the augmented args `webforjVersion` and `reasoning`, plus an optional `prefix` like `--dwc-color-`.
 
-## Universal facts (DWC v1 and v2)
+## Universal facts (all versions)
 
 ### Shade syntax
 
@@ -52,9 +52,11 @@ Per group, both versions document:
 
 ### Dark mode behavior
 
-Both versions describe the same flipped-color strategy: shade lightness is interpreted relative to mode, so the same component CSS keeps working in both light and dark themes. Code stays the same, mid-tone backgrounds remain mid-tone visually but flip to suit the surface.
+Both versions describe the same outcome: the same variation token (`--dwc-color-primary`, `-dark`, `-light`, `-text`, `-alt`) is mode-aware and produces a sensible result in both light and dark themes. The mechanism is different in v1 and v2 (see per-version sections below), but for any CSS that uses **variations** instead of raw step numbers, the behavior is preserved across versions.
 
-## DWC v1 only
+**Variations are mode-aware. Raw step numbers are not.** In any major, `var(--dwc-color-primary-50)` resolves to the same step lightness in both modes. If the visual needs to flip with the theme, use the variation tokens.
+
+## webforJ 25 and prior only
 
 ### Palette configuration
 
@@ -100,7 +102,7 @@ Primary:
 
 Each palette also defines a `--dwc-focus-ring-{palette}` value built from `hsla(...)` using the palette's `-h`, `-s`, plus `--dwc-focus-ring-l` and `--dwc-focus-ring-a`.
 
-## DWC v2 only
+## webforJ 26+ only
 
 ### Palette configuration
 
@@ -111,7 +113,7 @@ Each palette is generated from two seed variables:
 | `--dwc-color-{name}-h` | hue angle of the seed color (0–360) |
 | `--dwc-color-{name}-s` | saturation percentage (0% to 100%) |
 
-There is no `-c` (contrast threshold) variable in DWC v2. The v2 doc states: "All generated text colors meet WCAG AA contrast requirements automatically."
+There is no `-c` (contrast threshold) variable in webforJ 26+. The v2 doc states: "All generated text colors meet WCAG AA contrast requirements automatically."
 
 Default values shipped on the default theme:
 
@@ -161,13 +163,15 @@ For each step, three variables are produced:
 | Variable Pattern | Description |
 |---|---|
 | `--dwc-color-{name}-tint` | the seed color at 12% opacity, for subtle highlight backgrounds |
-| `--dwc-border-color-{name}` | mode-aware border color tinted with the palette hue |
-| `--dwc-border-color-{name}-emphasis` | stronger mode-aware border color |
+| `--dwc-border-color-{name}` | mode-aware border color tinted with the palette hue (subtle separator tone, NOT the saturated shade) |
+| `--dwc-border-color-{name}-emphasis` | stronger mode-aware border for hover / focus / active states |
 | `--dwc-focus-ring-{name}` | focus ring shadow for the palette |
+
+The `--dwc-color-{name}-alt` token is sourced from `-tint` in v2 (a translucent overlay), not from palette step 95 as in v1. If a v25 file used `-alt` expecting a near-white solid, the visual changes to a translucent tinted overlay in v26. Pick `--dwc-color-{name}-95` for the solid step or design around the translucent semantic.
 
 ### Variation step mapping
 
-DWC v2 has three variation groups (`normal`, `dark`, `light`) plus an `alt` token. The mapping per palette:
+webforJ 26+ has three variation groups (`normal`, `dark`, `light`) plus an `alt` token. The mapping per palette:
 
 Primary:
 

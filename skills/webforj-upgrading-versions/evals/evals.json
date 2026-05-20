@@ -47,6 +47,20 @@
         "Does NOT add the rewrite-maven-plugin block (it would not apply for this target)",
         "Runs mvn test after the project compiles"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm on webforJ 25.12 and I want to upgrade to 26. The project has a custom stylesheet at resources/static/app.css and one component with an @InlineStyleSheet block. Make sure the upgrade is complete — code AND styling.",
+      "expected_output": "The agent runs the standard OpenRewrite workflow for the Java side, then performs the new step 8 CSS sweep before cleanup: locates every @StyleSheet and @InlineStyleSheet in the project, validates each one against webforjVersion 26.00 using styles_validate_tokens, and points the user at the v25-to-v26-css.md reference for the token-by-token migration. The agent does NOT skip the CSS sweep, and it does NOT assume the OpenRewrite recipe touched CSS (it did not).",
+      "expectations": [
+        "Runs the standard eight-step OpenRewrite flow for the Java side (verify version, list-recipes, add plugin, dryRun, run, resolve TODOs, compile + test)",
+        "After Java verification passes, performs the new step 8 CSS sweep BEFORE removing the rewrite plugin",
+        "Greps the project for @StyleSheet and @InlineStyleSheet references (e.g. `grep -rn -E '@StyleSheet|@InlineStyleSheet' src`)",
+        "For each stylesheet found (file or inline block), calls webforj-mcp:styles_validate_tokens with webforjVersion: '26.00' and the stylesheet contents",
+        "References the styling skill's v25-to-v26-css.md migration document for the agent or the user to apply the documented token deltas (delete -c, semibold -> medium, shadow-color triplet -> OKLCH, focus-ring-gap, etc.)",
+        "Does NOT claim the OpenRewrite recipe handled the CSS — the recipe rewrites Java only",
+        "Removes the rewrite-maven-plugin block from pom.xml only AFTER the CSS sweep + Java verification both pass"
+      ]
     }
   ]
 }
