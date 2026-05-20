@@ -7,3 +7,4 @@ node_modules/
 # skill-creator runtime artifacts (any *-workspace/ at any depth)
 *-workspace/
 feedback.json
+target/

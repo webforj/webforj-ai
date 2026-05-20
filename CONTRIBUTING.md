@@ -58,6 +58,26 @@ Claude Code, Copilot CLI, and Gemini CLI auto-discover the new skill
 from `skills/`. Codex picks it up from the sync'd copy. No manifest
 edits needed.
 
+### Evaluate a skill
+
+Run the `/eval-skill` slash command from the repo root in Claude Code, passing the skill path:
+
+```
+/eval-skill webforj-ai/skills/webforj-styling-apps
+```
+
+The command spawns one `with_skill` subagent and one `without_skill` baseline subagent per eval in parallel, grades both against the assertions in `evals/evals.json`, runs the official skill-creator `aggregate_benchmark.py`, and opens the review viewer on `http://localhost:3117/`.
+
+**MCP server prerequisite.** The webforj-mcp server must be reachable BEFORE you launch an eval. The eval framework gives BOTH the `with_skill` and `without_skill` subagents access to whatever MCP servers are configured in `.mcp.json` at the repo root. This is the fair comparison: skills are evaluated for the workflow they teach, not for the existence of an MCP server the user already has installed.
+
+Concretely, before running `/eval-skill`:
+
+1. Confirm `.mcp.json` at the repo root has the `webforj-mcp` entry.
+2. Read the skill's `SKILL.md` and check it does not require additional MCP servers not in `.mcp.json`. If it does, add them.
+3. Do not strip MCP from the baseline. The orchestrator must pass the same MCP environment to both subagents.
+
+**Why both configs see MCP.** A skill's job is to teach a workflow, not to look up facts the MCP server can provide in one query. If a skill's `with_skill` vs `without_skill` delta is small because the MCP-aware baseline can answer the question on its own, that is a real finding about the skill, not a measurement artifact. Stripping MCP from the baseline would inflate the delta and conflate "skill value" with "MCP value".
+
 ### Update the MCP server URL
 
 1. Edit `.mcp.json` at the repo root.

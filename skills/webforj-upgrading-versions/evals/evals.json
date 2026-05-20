@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I'm on webforJ 25.12 in a standard Maven project (no Spring). Walk me through upgrading to 26.",
+      "prompt": "Walk me through upgrading my project to webforJ 26.",
       "expected_output": "The agent guides the user through the eight-step OpenRewrite workflow with the standard recipe, resolves the TODO webforJ comments by following the substitution embedded in each comment, verifies the build, and removes the rewrite plugin from pom.xml at the end.",
       "expectations": [
         "Calls webforj-mcp:get_versions to confirm the target major (26)",
@@ -16,6 +16,9 @@
         "Resolves each TODO by following the substitution embedded in the comment, including replacing IconRenderer string constructors with new IconRenderer<>(new Icon(name, pool))",
         "Runs mvn clean compile and mvn test before declaring done",
         "Removes the rewrite-maven-plugin block from pom.xml after TODOs are resolved"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -26,15 +29,18 @@
         "Detects the Spring project from a webforj-spring-boot-starter dependency in pom.xml",
         "Runs node scripts/list-recipes.mjs to discover the available recipes for the target major",
         "Picks com.webforj.rewrite.v26.UpgradeWebforjSpring (not the standard variant)",
-        "Surfaces the Spring recipe's pom-level side effects to the user before applying — specifically the <tomcat.version> property removal, the standalone com.webforj:webforj dependency removal, and the upstream Spring Boot 4 upgrade — discovered from the rewrite:dryRun patch (not from a hardcoded list in the skill)",
+        "Surfaces the Spring recipe's pom-level side effects to the user before applying \u2014 specifically the <tomcat.version> property removal, the standalone com.webforj:webforj dependency removal, and the upstream Spring Boot 4 upgrade \u2014 discovered from the rewrite:dryRun patch (not from a hardcoded list in the skill)",
         "Otherwise follows the same eight-step workflow as the standard project upgrade",
         "For 'Use <replacement> instead' TODOs, applies the substitute and deletes the TODO comment",
-        "For 'Configure elsewhere' TODOs (e.g. Webswing options 'Configure directly in the Admin Console'), does NOT delete the call — leaves the original call and TODO comment in place and reports back to the user listing each affected call, the value it was passing, and where the equivalent setting now lives"
+        "For 'Configure elsewhere' TODOs (e.g. Webswing options 'Configure directly in the Admin Console'), does NOT delete the call \u2014 leaves the original call and TODO comment in place and reports back to the user listing each affected call, the value it was passing, and where the equivalent setting now lives"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml"
       ]
     },
     {
       "id": 3,
-      "prompt": "Help me upgrade webforJ from 24.20 to 25.12.",
+      "prompt": "Help me upgrade my project to webforJ 25.12.",
       "expected_output": "The agent recognizes that no webforj-rewrite recipe exists for a 24-to-25 target and switches to the manual fallback workflow, driven by compile errors and search_knowledge_base lookups.",
       "expectations": [
         "Runs node scripts/list-recipes.mjs and confirms no v25 umbrella recipe exists in the output",
@@ -46,11 +52,14 @@
         "Prefers type: 'documentation' for upgrade notes, falls back to type: 'java' for new API signatures",
         "Does NOT add the rewrite-maven-plugin block (it would not apply for this target)",
         "Runs mvn test after the project compiles"
+      ],
+      "files": [
+        "evals/files/v24-webforj/pom.xml"
       ]
     },
     {
       "id": 4,
-      "prompt": "I'm on webforJ 25.12 and I want to upgrade to 26. The project has a custom stylesheet at resources/static/app.css and one component with an @InlineStyleSheet block. Make sure the upgrade is complete — code AND styling.",
+      "prompt": "I want to upgrade my project to webforJ 26. It has a custom stylesheet at resources/static/app.css and one component with an @InlineStyleSheet block. Make sure the upgrade is complete \u2014 code AND styling.",
       "expected_output": "The agent runs the standard OpenRewrite workflow for the Java side, then performs the new step 8 CSS sweep before cleanup: locates every @StyleSheet and @InlineStyleSheet in the project, validates each one against webforjVersion 26.00 using styles_validate_tokens, and points the user at the v25-to-v26-css.md reference for the token-by-token migration. The agent does NOT skip the CSS sweep, and it does NOT assume the OpenRewrite recipe touched CSS (it did not).",
       "expectations": [
         "Runs the standard eight-step OpenRewrite flow for the Java side (verify version, list-recipes, add plugin, dryRun, run, resolve TODOs, compile + test)",
@@ -58,8 +67,12 @@
         "Greps the project for @StyleSheet and @InlineStyleSheet references (e.g. `grep -rn -E '@StyleSheet|@InlineStyleSheet' src`)",
         "For each stylesheet found (file or inline block), calls webforj-mcp:styles_validate_tokens with webforjVersion: '26.00' and the stylesheet contents",
         "References the styling skill's v25-to-v26-css.md migration document for the agent or the user to apply the documented token deltas (delete -c, semibold -> medium, shadow-color triplet -> OKLCH, focus-ring-gap, etc.)",
-        "Does NOT claim the OpenRewrite recipe handled the CSS — the recipe rewrites Java only",
+        "Does NOT claim the OpenRewrite recipe handled the CSS \u2014 the recipe rewrites Java only",
         "Removes the rewrite-maven-plugin block from pom.xml only AFTER the CSS sweep + Java verification both pass"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/v25-webforj/src/main/resources/static/app.css"
       ]
     }
   ]
