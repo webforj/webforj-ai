@@ -20,6 +20,27 @@ webforJ routes all requests through `WebforjServlet`, which is mapped to `/*` in
 | Spring property: remap webforJ to a sub-path | `webforj.servlet-mapping` |
 | HOCON property: register a proxied servlet (plain webforJ) | `webforj.servlets[n].className`, `webforj.servlets[n].name`, `webforj.servlets[n].config.<key>` |
 | Servlet API package (Jakarta EE 9+) | `jakarta.servlet.http.HttpServlet` (NOT `javax.servlet`, that's the legacy package) |
+| Servlet API Maven coordinate | `jakarta.servlet:jakarta.servlet-api` (typically `6.1.0`, scope `provided`) |
+
+## Prerequisite: the servlet API must be on the compile classpath
+
+`jakarta.servlet.http.HttpServlet` only resolves at compile time if the project has the Jakarta Servlet API on its classpath. This is where the Spring case and the plain case diverge:
+
+- **Spring Boot projects:** `webforj-spring-boot-starter` transitively pulls in `tomcat-embed-core`, which contains the `jakarta.servlet.*` classes. No `pom.xml` change is needed. Approach 1 normally writes a `@RestController` (no servlet class at all) so even the question rarely comes up there.
+- **Plain webforJ projects:** the `com.webforj:webforj` dependency does NOT expose `jakarta.servlet-api` as a compile-scope dependency. The servlet container (Jetty/Tomcat) provides those classes at runtime, but `mvn compile` cannot see them. **If you write a custom `HttpServlet` (Approach 2 plain or Approach 3), you must add the dependency yourself,** otherwise compilation fails with `package jakarta.servlet.http does not exist`.
+
+For plain webforJ, add this to `pom.xml` once, near the other `<dependency>` entries:
+
+```xml
+<dependency>
+  <groupId>jakarta.servlet</groupId>
+  <artifactId>jakarta.servlet-api</artifactId>
+  <version>6.1.0</version>
+  <scope>provided</scope>
+</dependency>
+```
+
+`provided` is the right scope: the container ships these classes, so the WAR must not bundle a second copy.
 
 ## Pick your approach
 
@@ -124,13 +145,18 @@ This is the path the canonical Spring sample uses. No `web.xml` is involved. web
 Move `WebforjServlet` from `/*` to a sub-path like `/ui/*`. The custom servlet keeps its own URL pattern. No proxy mechanism, the servlet container routes directly. Works for both plain webforJ and Spring.
 
 ```
-- [ ] 1. Implement the servlet class
-- [ ] 2. Remap WebforjServlet (web.xml for plain, webforj.servlet-mapping for Spring)
-- [ ] 3. Declare the custom servlet (web.xml for plain, standard Spring for Spring)
-- [ ] 4. Verify
+- [ ] 1. (Plain only) Add jakarta.servlet-api to pom.xml if not present
+- [ ] 2. Implement the servlet class
+- [ ] 3. Remap WebforjServlet (web.xml for plain, webforj.servlet-mapping for Spring)
+- [ ] 4. Declare the custom servlet (web.xml for plain, standard Spring for Spring)
+- [ ] 5. Verify
 ```
 
-### 1. Implement the servlet
+### 1. (Plain only) pom.xml dependency
+
+Plain webforJ projects don't get the Servlet API on the compile classpath out of the box. Add the `jakarta.servlet-api` dependency shown in the [Prerequisite](#prerequisite-the-servlet-api-must-be-on-the-compile-classpath) section before writing the servlet class. Skip this step in Spring projects — `webforj-spring-boot-starter` already brings the API in transitively.
+
+### 2. Implement the servlet
 
 For plain webforJ, a standard Jakarta servlet:
 
@@ -150,7 +176,7 @@ public class HelloWorldServlet extends HttpServlet {
 
 For Spring, a `@RestController` or `ServletRegistrationBean` is the natural form (see Approach 1).
 
-### 2a. Remap in `web.xml` (plain webforJ)
+### 3a. Remap in `web.xml` (plain webforJ)
 
 Change `WebforjServlet`'s URL pattern from `/*` to a sub-path like `/ui/*`. Add the custom servlet declaration alongside.
 
@@ -185,7 +211,7 @@ After this:
 - The custom servlet handles `/hello-world` directly.
 - No proxy is involved, requests go straight to the servlet container's routing table.
 
-### 2b. Remap in `application.properties` (Spring Boot)
+### 3b. Remap in `application.properties` (Spring Boot)
 
 Spring projects do not have a `web.xml`. Set the property instead:
 
@@ -195,13 +221,13 @@ webforj.servlet-mapping=/ui/*
 
 Do not include quotes around the value, they will be interpreted as part of the URL pattern.
 
-### 3. Declare the custom servlet
+### 4. Declare the custom servlet
 
-For plain webforJ, the custom servlet is declared in `web.xml` (already shown in step 2a).
+For plain webforJ, the custom servlet is declared in `web.xml` (already shown in step 3a).
 
 For Spring, register through standard Spring mechanics: `@RestController`, `@Controller`, or a `ServletRegistrationBean`. No webforJ-specific glue is required.
 
-### 4. Verify
+### 5. Verify
 
 - `GET /ui/` (or wherever the home route is) renders the webforJ UI.
 - `GET /hello-world` returns the custom servlet's response.
@@ -212,18 +238,23 @@ For Spring, register through standard Spring mechanics: `@RestController`, `@Con
 For plain webforJ projects only. Keep `WebforjServlet` at `/*`. `WebforjServlet` intercepts all requests and proxies matching patterns to the registered custom servlets. Custom servlets are listed in `webforj.conf`.
 
 ```
-- [ ] 1. Implement the servlet class
-- [ ] 2. Keep WebforjServlet mapped to /*
-- [ ] 3. Declare the custom servlet in web.xml
-- [ ] 4. Register the custom servlet in webforj.conf under webforj.servlets
-- [ ] 5. Verify
+- [ ] 1. Add jakarta.servlet-api to pom.xml if not present
+- [ ] 2. Implement the servlet class
+- [ ] 3. Keep WebforjServlet mapped to /*
+- [ ] 4. Declare the custom servlet in web.xml
+- [ ] 5. Register the custom servlet in webforj.conf under webforj.servlets
+- [ ] 6. Verify
 ```
 
-### 1. Implement the servlet
+### 1. pom.xml dependency
+
+Same as in Approach 2 plain: add `jakarta.servlet:jakarta.servlet-api` with scope `provided` if it is not already a dependency. See the [Prerequisite](#prerequisite-the-servlet-api-must-be-on-the-compile-classpath) section.
+
+### 2. Implement the servlet
 
 Same as in Approach 2 (plain).
 
-### 2 & 3. Standard `web.xml` configuration
+### 3 & 4. Standard `web.xml` configuration
 
 Leave `WebforjServlet` on `/*` and add the custom servlet declaration:
 
@@ -250,7 +281,7 @@ Leave `WebforjServlet` on `/*` and add the custom servlet declaration:
 </web-app>
 ```
 
-### 4. Register the servlet in `webforj.conf`
+### 5. Register the servlet in `webforj.conf`
 
 `WebforjServlet` only proxies servlets that are listed under `webforj.servlets` in `webforj.conf`. Without this entry, requests to `/hello-world` are intercepted by `WebforjServlet` and never reach the custom servlet.
 
@@ -277,7 +308,7 @@ webforj.servlets = [
 
 The optional `config` map is delivered to the servlet as initialization parameters (`ServletConfig.getInitParameter(...)`). Omit it when no init params are needed.
 
-### 5. Verify
+### 6. Verify
 
 - `GET /` renders the webforJ UI as before.
 - `GET /hello-world` returns the custom servlet's response, proxied through `WebforjServlet`.
@@ -292,6 +323,7 @@ mvn clean compile
 Then audit:
 
 - `grep -n "javax.servlet" src` should return nothing. Modern webforJ projects use `jakarta.servlet`. Any `javax.servlet` import is wrong on Jakarta EE 9+.
+- For plain webforJ projects that introduce a custom servlet class (Approach 2 plain, Approach 3): `pom.xml` declares the `jakarta.servlet:jakarta.servlet-api` dependency with scope `provided`. Without it the new servlet won't compile (`package jakarta.servlet.http does not exist`).
 - For Approach 1 (Spring + exclude-urls): `application.properties` has a `webforj.exclude-urls=` line whose pattern covers the new endpoint, AND a Spring `@RestController` (or `ServletRegistrationBean`) handles the matching URL. `WebforjServlet`'s mapping is unchanged.
 - For Approach 2 plain: `web.xml` has `WebforjServlet` mapped to a sub-path (NOT `/*`).
 - For Approach 2 Spring: `application.properties` has `webforj.servlet-mapping=/ui/*` (or another sub-path) and there is no leftover `webforj.servlet-mapping=/*`.
@@ -313,3 +345,4 @@ Manual checks (ask the user, do NOT claim them): hit the custom URL with a brows
 | Pass init parameters to a proxied servlet | `config = { key = "value" }` inside the `webforj.servlets` entry |
 | Servlet base class | `jakarta.servlet.http.HttpServlet` |
 | Wrong base class (legacy, do not use on Jakarta EE 9+) | `javax.servlet.http.HttpServlet` |
+| Maven dep for the servlet API (plain webforJ only — Spring starter brings it in) | `jakarta.servlet:jakarta.servlet-api:6.1.0` with `<scope>provided</scope>` |

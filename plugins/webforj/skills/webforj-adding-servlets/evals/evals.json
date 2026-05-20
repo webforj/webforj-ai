@@ -3,21 +3,25 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have a plain webforJ app (no Spring) and I need to add a small REST endpoint at `/api/health` that returns `OK` as plain text. Wire it up so the webforJ UI keeps working as before.",
+      "prompt": "I need to add a small REST endpoint at `/api/health` that returns `OK` as plain text. Wire it up so the webforJ UI keeps working as before.",
       "expected_output": "The agent implements an `HttpServlet` from `jakarta.servlet.http.HttpServlet`, declares it in `src/main/webapp/WEB-INF/web.xml`, and registers it in `webforj.conf` under `servlets:` so `WebforjServlet` proxies requests to `/api/health`. OR, equivalently, remaps `WebforjServlet` to `/ui/*` in `web.xml` and lets the servlet container route `/api/health` directly. Either documented approach is acceptable. The webforJ UI continues to render after the change.",
       "expectations": [
         "Implements a class that extends `jakarta.servlet.http.HttpServlet` (NOT `javax.servlet.http.HttpServlet`)",
+        "LOAD-BEARING (plain webforJ compile-classpath): `pom.xml` declares the `jakarta.servlet:jakarta.servlet-api` dependency with scope `provided`. The base project does NOT ship this dependency, and the new `HttpServlet` subclass will fail to compile (`package jakarta.servlet.http does not exist`) without it. This assertion fails if the agent wrote the servlet without adding the dependency.",
         "DISCRIMINATING: AT LEAST ONE of the two valid plain-webforJ approaches is fully wired so `/api/health` is actually reachable. EITHER `web.xml` has `WebforjServlet` mapped to a non-`/*` sub-path (e.g. `/ui/*`) AND the custom servlet declared with `<url-pattern>/api/health</url-pattern>`, OR `web.xml` has `WebforjServlet` on `/*` AND `webforj.conf` has a `webforj.servlets = [ ... ]` entry whose `className` matches the custom servlet's FQCN. The assertion FAILS if neither leg holds (e.g. the agent invented a non-existent property like `webforj.servlets.exclude` and stopped there).",
         "If the chosen approach is REMAP: `WebforjServlet`'s `<url-pattern>` in `web.xml` is a sub-path, NOT `/*`",
         "If the chosen approach is PROXY: `webforj.conf` contains `webforj.servlets = [ { className = \"...\", name = \"...\" } ]` (the modern HOCON keys, NOT the legacy `class:` shorthand and NOT a top-level `servlets:` outside the `webforj.` namespace)",
         "The custom servlet's `<servlet-class>` (in web.xml) and the `className` (in webforj.conf, if proxy approach) reference the SAME fully-qualified class name",
         "Does NOT modify `WebforjServlet`'s class name or replace `WebforjServlet` with a custom class, the framework servlet stays as `com.webforj.servlet.WebforjServlet`",
         "Does NOT introduce Spring annotations (`@RestController`, `@SpringBootApplication`, `@Bean`) or Spring-only files (`application.properties`) for this plain-webforJ scenario"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
       "id": 2,
-      "prompt": "My webforJ Spring Boot app needs to expose a webhook endpoint at `/webhook/github` that accepts POST requests. Add the endpoint without breaking the existing webforJ UI.",
+      "prompt": "My app needs to expose a webhook endpoint at `/webhook/github` that accepts POST requests. Add the endpoint without breaking the existing webforJ UI.",
       "expected_output": "Since this is a Spring Boot app, the agent uses standard Spring mechanisms to host the new endpoint (a `@RestController` mapped to `/webhook/github`, or a `ServletRegistrationBean`) AND adds `webforj.exclude-urls=/webhook/**` to `application.properties` so the URL pattern is forwarded to Spring MVC instead of being consumed by `WebforjServlet`. webforJ stays at `/*` and the existing UI URLs do not change.",
       "expectations": [
         "LOAD-BEARING: `src/main/resources/application.properties` contains `webforj.exclude-urls=` with a value whose Ant pattern matches `/webhook/github` (e.g. `webforj.exclude-urls=/webhook/**` or `webforj.exclude-urls=/webhook/github`). Without this line, `WebforjServlet` consumes the `/webhook/github` URL at `/*` and the controller is never reached, so the feature does not work even if the controller is correctly written. This assertion is the single most important check for this eval.",
@@ -27,6 +31,9 @@
         "Does NOT add a `webforj.conf` `webforj.servlets` entry, the proxy approach is for plain webforJ only, not Spring",
         "Does NOT change the webforJ servlet mapping (does NOT add `webforj.servlet-mapping=/ui/*` or any other remap), webforJ stays at `/*` and UI URLs do not move",
         "Does NOT remove or rename `WebforjServlet`, the framework servlet stays in place"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml"
       ]
     },
     {
@@ -39,8 +46,12 @@
         "LOAD-BEARING: `webforj.conf` contains a `webforj.servlets = [ ... ]` entry with HOCON keys `className` (FQCN of the custom servlet) and `name`, optional `config`. Specifically NOT `class` (the legacy shorthand), and NOT a top-level `servlets:` block outside the `webforj.` namespace. Without these exact keys the proxy is not wired and `/api/echo` is unreachable.",
         "The `className` value in `webforj.conf` exactly matches the `<servlet-class>` value in `web.xml`",
         "The custom servlet extends `jakarta.servlet.http.HttpServlet`",
+        "LOAD-BEARING (plain webforJ compile-classpath): `pom.xml` declares the `jakarta.servlet:jakarta.servlet-api` dependency with scope `provided`. The base project does NOT ship this dependency, and the new `HttpServlet` subclass will fail to compile without it.",
         "Does NOT remap `WebforjServlet` to a sub-path, the constraint says to keep it on `/*`",
         "Does NOT skip the `webforj.conf` registration, without it `WebforjServlet` will not proxy to the custom servlet and the URL is unreachable"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     }
   ]

@@ -12,6 +12,10 @@
         "Stops the interval in the view's destroy hook (e.g. `interval.stop()` inside `onDestroy()` or `onDidDestroy()`)",
         "Does NOT introduce `java.util.Timer`, `javax.swing.Timer`, `Executors.newScheduledThreadPool`, or `new Thread(...)` for the periodic schedule",
         "The `Interval`'s elapsed listener body sets components directly (no `Environment.runLater` wrap, since `Interval` runs on the UI thread). This assertion fails if the listener body wraps component mutations in `Environment.runLater(...)`. It also fails (NOT vacuously) if no `Interval` was constructed at all (i.e. the agent used a banned mechanism)."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-1/src/main/java/com/example/evalbase/views/StockView.java"
       ]
     },
     {
@@ -24,6 +28,10 @@
         "Calls `debouncer.cancel()` from the view's destroy hook (e.g. inside `onDidDestroy()` or `onDestroy()`)",
         "Does NOT introduce a `java.util.Timer`, `javax.swing.Timer`, `ScheduledExecutorService`, `CompletableFuture.runAsync`, an `ExecutorService`, a raw `new Thread(...)`, or any hand-rolled timestamp-based debouncing for the debounce mechanism",
         "Every UI component mutation in the file is reachable only from the UI thread. If the agent introduces ANY non-UI thread (CompletableFuture, ExecutorService, Thread, ScheduledExecutorService), every UI mutation in that thread's body is wrapped in `Environment.runLater(...)`. Mutating a component directly from a non-UI thread (e.g. `resultsList.add(...)` inside a `CompletableFuture.runAsync` body without `runLater`) is broken and would throw `IllegalStateException` at runtime."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/SearchView.java"
       ]
     },
     {
@@ -41,11 +49,15 @@
         "Properly handles `InterruptedException` inside the worker loop (catches it, restores the interrupt flag with `Thread.currentThread().interrupt()`, and exits the loop)",
         "Does NOT call `progressBar.setValue(...)` or any other component method directly from the background thread (every UI mutation goes through `Environment.runLater`)",
         "Does NOT use `java.util.Timer`, `javax.swing.Timer`, or a raw `new Thread(...)` from a static field or static initializer for the work"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-3/src/main/java/com/example/evalbase/views/LongTaskView.java"
       ]
     },
     {
       "id": 4,
-      "prompt": "My webforJ Spring Boot app has a service that runs a long task. The view shows a progress bar that should update from the service. Wire the async service correctly so UI updates do not throw.",
+      "prompt": "My app has a service that runs a long task. The view shows a progress bar that should update from the service. Wire the async service correctly so UI updates do not throw.",
       "expected_output": "The agent annotates the app class with `@EnableAsync`, marks the service method `@Async` returning `CompletableFuture<T>`, has the service accept a progress callback (`Consumer<Integer>` or similar), and the view passes a callback whose body wraps every UI update in `Environment.runLater(...)`. The view also cancels the task with `cancel(true)` on destroy.",
       "expectations": [
         "Adds `@EnableAsync` to the Spring Boot application class (in addition to whatever annotations were already there)",
@@ -55,6 +67,12 @@
         "On view destroy, calls `currentTask.cancel(true)` (the `true` argument interrupts the worker thread)",
         "Does NOT touch UI components directly from the `@Async` method or the `whenComplete` callback (every UI op goes through `Environment.runLater`)",
         "Does NOT replace the Spring async path with `java.util.Timer`, `javax.swing.Timer`, or a raw `new Thread(...)` started from the view"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/v25-spring/src/main/java/com/example/evalbase/Application.java",
+        "evals/files/eval-4/src/main/java/com/example/evalbase/views/ReportView.java",
+        "evals/files/eval-4/src/main/java/com/example/evalbase/services/ReportService.java"
       ]
     }
   ]
