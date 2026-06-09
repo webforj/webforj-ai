@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have a plain webforJ app (no Spring) with hardcoded English labels. Add internationalization with English and German support, auto-detect the user's browser language at startup, and let users switch language at runtime. Translations should live in standard `.properties` files.",
+      "prompt": "My app currently has hardcoded English labels. Add internationalization with English and German support, auto-detect the user's browser language at startup, and let users switch language at runtime. Translations should live in standard `.properties` files.",
       "expected_output": "The agent adds `webforj.i18n.supported-locales` and `webforj.i18n.auto-detect` to the HOCON `webforj.conf`, creates `messages.properties` and `messages_de.properties` under `src/main/resources/`, replaces hardcoded text with `t(\"key\")` calls in components that `implements HasTranslation`, makes those components also `implements LocaleObserver` and re-apply the same `t(\"key\")` calls inside `onLocaleChange(LocaleEvent)`, and wires some user interaction to call `App.setLocale(Locale.forLanguageTag(...))`. No Spring code is introduced.",
       "expectations": [
         "Adds `webforj.i18n.supported-locales` and `webforj.i18n.auto-detect` to a HOCON `webforj.conf` (NOT to `application.properties`)",
@@ -13,11 +13,17 @@
         "At least one component holding translated text implements `LocaleObserver` and re-applies its text by calling the same `t(\"key\")` inside `onLocaleChange(LocaleEvent)`",
         "Wires a user interaction whose handler calls `App.setLocale(Locale.forLanguageTag(...))` (or `App.setLocale(Locale.GERMAN)`) to change the locale at runtime",
         "Does NOT introduce Spring dependencies, `application.properties`, or `MessageSource` beans"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-1/src/main/resources/messages.properties",
+        "evals/files/eval-1/src/main/resources/messages_de.properties",
+        "evals/files/eval-1/src/main/java/com/example/evalbase/views/WelcomeView.java"
       ]
     },
     {
       "id": 2,
-      "prompt": "My webforJ Spring Boot app already has a couple of views. Wire up i18n: support English and German, auto-detect from the browser, and store translations in `messages.properties` files. Provide a way for the user to change the language at runtime.",
+      "prompt": "My app already has a couple of views. Wire up i18n: support English and German, auto-detect from the browser, and store translations in `messages.properties` files. Provide a way for the user to change the language at runtime.",
       "expected_output": "The agent adds `webforj.i18n.supported-locales=en,de` and `webforj.i18n.auto-detect=true` to `application.properties`, creates `messages.properties` and `messages_de.properties`, makes long lived components `implements HasTranslation, LocaleObserver` so they can call `t(\"key\")` and re-apply text in `onLocaleChange(LocaleEvent)`, and wires a user interaction to `App.setLocale(...)`. No custom `TranslationResolver` is registered because Spring auto-configures the default `BundleTranslationResolver` from `application.properties`.",
       "expectations": [
         "Adds `webforj.i18n.supported-locales=en,de` and `webforj.i18n.auto-detect=true` to `application.properties` (NOT to a HOCON `webforj.conf`)",
@@ -27,6 +33,12 @@
         "Wires a user interaction whose handler calls `App.setLocale(Locale.forLanguageTag(...))`",
         "Does NOT define a custom `TranslationResolver` `@Bean` for this scenario, since Spring auto-configuration provides a default `BundleTranslationResolver` from `application.properties`",
         "Does NOT invent or cite Spring `MessageSource`, `LocaleResolver`, or `LocaleChangeInterceptor` (these are NOT how webforJ wires translations)"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-2/src/main/resources/messages.properties",
+        "evals/files/eval-2/src/main/resources/messages_de.properties",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/WelcomeView.java"
       ]
     },
     {
@@ -41,6 +53,12 @@
         "Uses `java.text.MessageFormat` to substitute `{0}`, `{1}` placeholders when `args` are provided and non-empty",
         "Does NOT call `App.setTranslationResolver` from application code, the Spring bean is picked up by the framework",
         "Does NOT invent or cite Spring `MessageSource` as the integration point"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-3/src/main/java/com/example/evalbase/i18n/Translation.java",
+        "evals/files/eval-3/src/main/java/com/example/evalbase/i18n/TranslationRepository.java",
+        "evals/files/eval-3/src/main/java/com/example/evalbase/views/WelcomeView.java"
       ]
     },
     {
@@ -53,6 +71,11 @@
         "Registers the listener via `@AutoService(AppLifecycleListener.class)` or by adding the listener's fully qualified class name to `src/main/resources/META-INF/services/com.webforj.AppLifecycleListener`",
         "Does NOT install the resolver by overriding a method on the `App` subclass (e.g. does NOT add a `protected void onWillRun()` override in `Application extends App`)",
         "Does NOT introduce Spring annotations (`@Configuration`, `@Bean`, `@Component`) for this plain app scenario"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-4/src/main/resources/translations.json",
+        "evals/files/eval-4/src/main/java/com/example/evalbase/views/WelcomeView.java"
       ]
     }
   ]

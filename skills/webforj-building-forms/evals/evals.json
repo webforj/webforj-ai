@@ -14,6 +14,9 @@
         "Does NOT manually call `field.getValue()` for each field on submit and copy values into the bean, the whole point of `BindingContext` is to do that for you",
         "Does NOT register a custom reporter for every field unless asked. The default reporter shows inline errors on core webforJ fields automatically.",
         "Does NOT mix `javax.validation.constraints` with `jakarta.validation.constraints`. Jakarta is the modern package."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -26,6 +29,11 @@
         "Does NOT also manually call `context.bind(nameField, \"name\").add()` after calling `BindingContext.of(this, ...)`, that registers the binding twice",
         "Does NOT add `@UseProperty(\"power\")` to the `power` field, it already matches by name; redundant annotation is wrong style",
         "Imports the annotation from `com.webforj.data.binding.annotation`, NOT from any other package"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/models/Hero.java",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/HeroView.java"
       ]
     },
     {
@@ -38,6 +46,9 @@
         "Sets the initial submit state to disabled (e.g. `submit.setEnabled(false)`) so the button is correctly off when the form is first rendered with empty/invalid values",
         "Does NOT poll validity in a timer or check it inside `onClick` only, the documented pattern is event-driven via `onValidate`",
         "Mentions or implies the unidirectional caveat: `observe` syncs UI -> bean, but later changes to the bean don't reflect back. If the bean changes externally, call `context.read(bean)` again."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -51,6 +62,11 @@
         "Binds with `context.bind(phoneField, \"phone\").add()` (or auto-bind with field name matching), the `String` value of the field maps directly to the bean's `String phone` property",
         "Does NOT add a `setPattern(...)` call on the field that re-validates the same shape the mask enforces, the mask already guarantees the structure",
         "LOAD-BEARING: Does NOT add a `@Pattern` (or any other regex-shape constraint) on the bean's `phone` property that re-validates the `(NNN) NNN-NNNN` shape. The mask already prevents any other shape from reaching the bean. Adding this is dead code that wastes attention and confuses the contract. Acceptable Jakarta annotations on `phone` are constraints the mask CANNOT express, like `@NotEmpty` (mask still lets the user submit empty) or `@Size(min=14, max=14)` (mask allows partially-filled input). Anything that re-asserts the digit-and-paren-and-dash structure FAILS this check."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-4/src/main/java/com/example/evalbase/models/Contact.java",
+        "evals/files/eval-4/src/main/java/com/example/evalbase/views/ContactView.java"
       ]
     },
     {
@@ -64,19 +80,11 @@
         "If `MaskedNumberRenderer` is chosen, the mask uses webforJ tokens: `0` (always digit), `#` (suppress leading zeros), `,` (grouping), `.` (decimal), `$` (literal). Wrong masks: Java `DecimalFormat` patterns, `String.format` patterns, `\"\\u00A4#,##0.00\"` (currency symbol token does not exist on these renderers).",
         "Does NOT call `MaskDecorator` anywhere, the prompt is about a Table column and the documented tool is a Table renderer. Suggesting `MaskDecorator` here is the wrong recommendation that the user explicitly flagged.",
         "Does NOT instantiate `MaskedNumberField` (a UI input component) to format a Table cell, fields are for user typing, not for rendering"
-      ]
-    },
-    {
-      "id": 11,
-      "prompt": "I generate a daily PDF summary email outside any UI. I have a `LocalDate reportDate` and a `double totalRevenue`. Format them as `Report for July 04, 2025: $1,234,567.89` for the email body. The values are NOT in a Table, NOT in a form field.",
-      "expected_output": "The agent uses `MaskDecorator.forDate(reportDate, \"%Ml %Dz, %Yl\")` and `MaskDecorator.forNumber(totalRevenue, \"$#,###,##0.00\")` to compose the line. Both calls null-check the result before concatenating, since `MaskDecorator` returns `null` on invalid input. This is the documented use case for `MaskDecorator`: a non-input, non-Table surface where the mask syntax is wanted.",
-      "expectations": [
-        "LOAD-BEARING: Uses `MaskDecorator` from `com.webforj.MaskDecorator` (top-level package, NOT under `component.field`, NOT under `component.table.renderer`). The check FAILS if the agent invents a different package.",
-        "Calls `MaskDecorator.forDate(reportDate, mask)` for the date and `MaskDecorator.forNumber(totalRevenue, mask)` for the number. The date mask uses `%` tokens (e.g. `\"%Ml %Dz, %Yl\"`, `\"%Mz/%Dz/%Yl\"`); the number mask uses `0`, `#`, `,`, `.`, `$` (e.g. `\"$#,###,##0.00\"`). Java `DateTimeFormatter` patterns or `DecimalFormat` patterns are wrong on these calls.",
-        "Null-checks the result of each `MaskDecorator` call before concatenating. `MaskDecorator` returns `null` on invalid input, and an unchecked `null` interpolated into a string produces literal `null` in the output.",
-        "Does NOT use a `Table` renderer (`CurrencyRenderer`, `MaskedNumberRenderer`, `MaskedDateTimeRenderer`), there is no Table involved",
-        "Does NOT use `MaskedTextField` / `MaskedNumberField` / `MaskedDateField`, those are UI input components, not stateless formatters",
-        "Does NOT roll a custom `DateTimeFormatter` / `NumberFormat` for this, the prompt is about webforJ formatting and `MaskDecorator` is the documented tool for non-input, non-Table surfaces"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-5/src/main/java/com/example/evalbase/models/Product.java",
+        "evals/files/eval-5/src/main/java/com/example/evalbase/views/ProductsView.java"
       ]
     },
     {
@@ -90,6 +98,9 @@
         "Captures the latest peer value BEFORE calling `getBinding(\"...\").validate()`, the predicate reads the captured peer field, so it must be assigned first in the listener",
         "Does NOT try to register a single 'cross-field' validator outside of any binding, the documented pattern is per-binding validators that read external state",
         "Does NOT skip the `.add()` at the end of each binding chain"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -103,6 +114,9 @@
         "Field order in the layout constructor matches the requested visual flow: firstName | lastName, email (full), password | passwordConfirm, address (full), state | zip, cancel | submit (or similar)",
         "Does NOT use `FlexLayout` alone, `FlexLayout` does not provide responsive breakpoints with auto-collapsing columns",
         "Does NOT hand-roll CSS media queries for responsive behavior when `ColumnsLayout.Breakpoint` is the documented mechanism"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -115,6 +129,9 @@
         "Acceptable additional touches: `dateField.getPicker().setIconVisible(true)` so the calendar icon is visible; `dateField.setMask(\"%Mz/%Dz/%Yz\")` (or another date mask) so the format is consistent",
         "Does NOT recommend disabling the field entirely with `setEnabled(false)`, that blocks ALL interaction including the picker",
         "Does NOT attempt to attach a key listener that swallows keystrokes, that's a fragile workaround when `setAllowCustomValue(false)` is the supported API"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     },
     {
@@ -127,6 +144,11 @@
         "The validator checks all three constraints: length >= 8, at least one digit, at least one uppercase letter. Returning `invalid(\"...\")` on the first failure is fine; aggregating all failure messages is also fine.",
         "Applies the validator with `.useValidator(new PasswordStrengthValidator())` (or `@UseValidator(PasswordStrengthValidator.class)` on the field), NOT `.useValidator(value -> ..., \"message\")` (that's an inline predicate, not a reusable validator class)",
         "Does NOT use Jakarta `@Pattern` for this, the prompt asks for a reusable validator class. Jakarta `@Pattern` would be a different (also valid) approach, but not the requested one."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-9/src/main/java/com/example/evalbase/models/User.java",
+        "evals/files/eval-9/src/main/java/com/example/evalbase/views/SignupView.java"
       ]
     },
     {
@@ -140,6 +162,26 @@
         "LOAD-BEARING: When binding, passes the bean type as a THIRD argument to `bind`: `context.bind(dateField, \"orderDate\", String.class)`. Without this, the framework assumes the bean type matches the component type and the transformer is misapplied.",
         "Calls `.useTransformer(new DateTransformer())` (or `@UseTransformer(DateTransformer.class)` on the field) on the binding builder",
         "Throws `TransformationException` (from `com.webforj.data.transformation`) on parse failure, not a generic `RuntimeException` and not silently returning `null`"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-10/src/main/java/com/example/evalbase/models/Order.java"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I generate a daily PDF summary email outside any UI. I have a `LocalDate reportDate` and a `double totalRevenue`. Format them as `Report for July 04, 2025: $1,234,567.89` for the email body. The values are NOT in a Table, NOT in a form field.",
+      "expected_output": "The agent uses `MaskDecorator.forDate(reportDate, \"%Ml %Dz, %Yl\")` and `MaskDecorator.forNumber(totalRevenue, \"$#,###,##0.00\")` to compose the line. Both calls null-check the result before concatenating, since `MaskDecorator` returns `null` on invalid input. This is the documented use case for `MaskDecorator`: a non-input, non-Table surface where the mask syntax is wanted.",
+      "expectations": [
+        "LOAD-BEARING: Uses `MaskDecorator` from `com.webforj.MaskDecorator` (top-level package, NOT under `component.field`, NOT under `component.table.renderer`). The check FAILS if the agent invents a different package.",
+        "Calls `MaskDecorator.forDate(reportDate, mask)` for the date and `MaskDecorator.forNumber(totalRevenue, mask)` for the number. The date mask uses `%` tokens (e.g. `\"%Ml %Dz, %Yl\"`, `\"%Mz/%Dz/%Yl\"`); the number mask uses `0`, `#`, `,`, `.`, `$` (e.g. `\"$#,###,##0.00\"`). Java `DateTimeFormatter` patterns or `DecimalFormat` patterns are wrong on these calls.",
+        "Null-checks the result of each `MaskDecorator` call before concatenating. `MaskDecorator` returns `null` on invalid input, and an unchecked `null` interpolated into a string produces literal `null` in the output.",
+        "Does NOT use a `Table` renderer (`CurrencyRenderer`, `MaskedNumberRenderer`, `MaskedDateTimeRenderer`), there is no Table involved",
+        "Does NOT use `MaskedTextField` / `MaskedNumberField` / `MaskedDateField`, those are UI input components, not stateless formatters",
+        "Does NOT roll a custom `DateTimeFormatter` / `NumberFormat` for this, the prompt is about webforJ formatting and `MaskDecorator` is the documented tool for non-input, non-Table surfaces"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml"
       ]
     }
   ]

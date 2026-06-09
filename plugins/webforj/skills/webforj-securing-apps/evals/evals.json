@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Add login to my webforJ Spring Boot app. I want users to log in before they can see any page, except the login page itself. Use a simple in-memory user `user/password` for now. Show me everything I need to add.",
+      "prompt": "Add login to my app. I want users to log in before they can see any page, except the login page itself. Use a simple in-memory user `user/password` for now. Show me everything I need to add.",
       "expected_output": "The agent adds `spring-boot-starter-security` to `pom.xml`, writes a `@Configuration @EnableWebSecurity SecurityConfig` that exposes a `SecurityFilterChain` built with `WebforjSecurityConfigurer.webforj()` and configures `loginPage(LoginView.class)` plus `accessDeniedPage(...)` plus `logout()`. It writes a `LoginView` annotated with `@AnonymousAccess` (from `com.webforj.router.security.annotation`) that uses the `Login` component, calls `setAction(...)` with the same path as the route, and reads `?error` and `?logout` query params. It writes an `AccessDenyView`. The user prompt asked for an in-memory user, so the agent wires up an in-memory user store. A typical wiring uses `InMemoryUserDetailsManager` + a `PasswordEncoder` bean such as `BCryptPasswordEncoder`. Other in-memory wirings, a custom `AuthenticationProvider`, a `MapReactiveUserDetailsService`, or a different `PasswordEncoder` like `Pbkdf2PasswordEncoder` / `Argon2PasswordEncoder` / `PasswordEncoderFactories.createDelegatingPasswordEncoder()`, are all acceptable as long as the configuration is internally consistent and the user `user/password` actually authenticates.",
       "expectations": [
         "Adds the Spring Security starter dependency `org.springframework.boot:spring-boot-starter-security` to `pom.xml`",
@@ -14,6 +14,11 @@
         "Wires an authentication source that resolves the requested in-memory user `user/password`. The canonical path is a `UserDetailsService` bean backed by `InMemoryUserDetailsManager` plus a `PasswordEncoder` bean. Equivalent acceptable wirings: a custom `AuthenticationProvider`, a programmatically-configured `AuthenticationManagerBuilder.inMemoryAuthentication()`, or any other Spring-Security mechanism that produces the same in-memory `user/password` credential. The `PasswordEncoder` does NOT have to be `BCryptPasswordEncoder`, `Pbkdf2PasswordEncoder`, `Argon2PasswordEncoder`, `SCryptPasswordEncoder`, or `PasswordEncoderFactories.createDelegatingPasswordEncoder()` are all acceptable. The user-store and the encoder must be internally consistent (passwords stored with the same encoder Spring will compare against). The check FAILS if the agent declares a `UserDetailsService` but no `PasswordEncoder` bean (Spring then refuses to start), or if the encoder used to hash the stored password differs from the one Spring uses to verify.",
         "Does NOT invent helper methods or annotations not in the documented Spring integration (e.g. no fictional `@WebforjSecure`, no fake `WebforjAuth.configure()` methods)",
         "Does NOT register the built-in evaluators manually (e.g. `manager.registerEvaluator(new RolesAllowedEvaluator(), 5)`). The Spring auto-configuration registers them automatically; manually registering them in a Spring app is wrong."
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-1/src/main/java/com/example/evalbase/views/LoginView.java",
+        "evals/files/eval-1/src/main/java/com/example/evalbase/views/AccessDenyView.java"
       ]
     },
     {
@@ -26,6 +31,12 @@
         "`BillingView` carries `@RolesAllowed(\"ACCOUNTANT\")` imported from `jakarta.annotation.security.RolesAllowed` (NOT from any Spring package)",
         "Does NOT use a SpEL `@RouteAccess(\"hasRole('ACCOUNTANT')\")` for the `BillingView`, pure-role checks should use the simpler `@RolesAllowed` annotation",
         "Does NOT introduce a custom evaluator for these straightforward role/auth gates"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/AboutView.java",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/DashboardView.java",
+        "evals/files/eval-2/src/main/java/com/example/evalbase/views/BillingView.java"
       ]
     },
     {
@@ -37,6 +48,10 @@
         "Uses an `IconButton` (or any clickable webforJ component) with an `onClick(e -> ...)` handler that calls `submit()` on the result of `SpringSecurityFormSubmitter.logout(...)`",
         "Does NOT call `SecurityContextHolder.clearContext()` directly, bypasses Spring's logout handlers (CSRF, remember-me cleanup, custom logout success handler)",
         "Does NOT import a fictional `WebforjLogout` or `WebforjAuth.logout()` helper, the documented helper is `SpringSecurityFormSubmitter`"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-3/src/main/java/com/example/evalbase/views/LogoutView.java"
       ]
     },
     {
@@ -50,6 +65,9 @@
         "Reminds the user that `@AnonymousAccess` is required on the login view (and any other intentionally public route) so they don't get caught by the same redirect loop that kicks in regardless of how secure-by-default got set",
         "Does NOT recommend changing every existing view to add `@PermitAll`, the whole point of secure-by-default is that unannotated routes already require authentication",
         "Does NOT recommend implementing a custom `RouteSecurityConfiguration`, that path is for custom plain webforJ projects, not Spring apps that already auto-configure security"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml"
       ]
     },
     {
@@ -62,6 +80,10 @@
         "The expression matches the requested logic: ADMIN role grants access OR (ANALYST role AND `REPORTS:ADVANCED` authority) grants access. Equivalent restatements (`hasAnyRole('ADMIN') or ...`) are fine; using `hasAuthority('ADMIN')` instead of `hasRole('ADMIN')` is WRONG because `hasAuthority` does NOT auto-prefix `ROLE_`.",
         "Does NOT spawn a custom `RouteSecurityEvaluator` for this, the prompt explicitly asks for the rule on the route, and SpEL is the documented choice for boolean role/authority expressions",
         "Does NOT also stack `@RolesAllowed` on the same route in a way that contradicts the SpEL expression"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-5/src/main/java/com/example/evalbase/views/ReportsView.java"
       ]
     },
     {
@@ -77,6 +99,10 @@
         "LOAD-BEARING: The view annotates with `@RolesAllowed(\"USER\")` (or `@RouteAccess(\"isAuthenticated()\")`) AND `@RequireOwnership(\"userId\")`. Stacking with `@PermitAll` is wrong because `@PermitAll` is terminal, it grants immediately and the custom evaluator never runs.",
         "Returns `RouteAccessDecision.deny(reason)` (not just `null` or a thrown exception) when the ownership check fails, with a human-readable reason",
         "If authentication is missing, returns `RouteAccessDecision.denyAuthentication()` so the user is redirected to login (rather than the access-denied page)"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-6/src/main/java/com/example/evalbase/views/OrderDetailsView.java"
       ]
     },
     {
@@ -89,6 +115,10 @@
         "LOAD-BEARING: When checking for ADMIN, compares against the granted authority string `ROLE_ADMIN` (Spring auto-prefixes role-based authorities with `ROLE_`). Comparing against `ADMIN` directly via `authority.equals(\"ADMIN\")` does NOT match. Equivalent acceptable approaches: iterate `authorities.stream().anyMatch(a -> a.getAuthority().equals(\"ROLE_ADMIN\"))`, or call a Spring helper that internally does the prefixing.",
         "The view itself is annotated `@PermitAll` (or relies on `secure-by-default=true` being set elsewhere) so the user is guaranteed to be authenticated when the constructor runs and `getAuthentication()` is non-null",
         "Does NOT use the plain `SecurityManager.getCurrent().getSecurityContext()` API, that is the custom plain path; this Spring app should use `SecurityContextHolder`"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml",
+        "evals/files/eval-7/src/main/java/com/example/evalbase/views/ProfileView.java"
       ]
     },
     {
@@ -107,6 +137,11 @@
         "Does NOT use `@RegisteredEvaluator` or `@RouteAccess`, those are Spring-only",
         "Does NOT use `SpringSecurityFormSubmitter` for logout, the plain manager exposes its own `logout()` helper",
         "Does NOT use Spring's `SecurityContextHolder`, it is empty in plain webforJ"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-8/src/main/java/com/example/evalbase/views/LoginView.java",
+        "evals/files/eval-8/src/main/java/com/example/evalbase/views/AccessDenyView.java"
       ]
     },
     {
@@ -121,6 +156,10 @@
         "Does NOT call `SpringSecurityFormSubmitter.login(...)`, that helper builds a form post to Spring's auth endpoint, which does not exist in a plain webforJ project",
         "Does NOT call `setAction(\"/login\")` on the `Login` component, the form is handled in-process by `onSubmit`, not posted to a Spring filter",
         "The view itself is annotated `@AnonymousAccess` (imported from `com.webforj.router.security.annotation`) so unauthenticated users can reach the login page"
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-9/src/main/java/com/example/evalbase/views/LoginView.java"
       ]
     },
     {
@@ -134,6 +173,9 @@
         "Does NOT recommend bumping the custom evaluator's priority below `@PermitAll`'s (e.g. setting it to `1`). Priority changes the order, but a terminal grant still stops the chain regardless of who runs first; lowering priority into the framework-reserved range also triggers a warning.",
         "Does NOT recommend removing `@PermitAll` and leaving the route unannotated, behavior then depends on `secure-by-default`, and with it off the route becomes public, which is worse",
         "Does NOT recommend chaining a Spring SpEL `@RouteAccess` AND `@PermitAll` together, `@PermitAll` is still terminal and the SpEL still never runs"
+      ],
+      "files": [
+        "evals/files/v25-spring/pom.xml"
       ]
     }
   ]
