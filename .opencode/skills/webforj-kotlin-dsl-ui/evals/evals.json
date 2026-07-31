@@ -1,0 +1,35 @@
+{
+  "skill_name": "webforj-kotlin-dsl-ui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to create a login form for my webforJ app using Kotlin DSL with the `build` pattern. It should have username and password fields, a remember me checkbox, and a submit button. The form should be vertically laid out and the submit button should show a toast message when clicked. Use proper imports from com.webforj.kotlin.dsl.*",
+      "expected_output": "Kotlin DSL code that uses self.build { } pattern, creates a login form with textField for username, passwordField for password, checkBox for remember me, and a button with onClick handler that shows a toast. Should use flexLayout with COLUMN direction for vertical layout. Should include proper imports.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Build me an app layout with header slot, navigation drawer slot, and footer slot using Kotlin DSL. The header should have a label saying 'My App'. The drawer should have 3 menu items: Dashboard, Users, Settings. The footer should show copyright text. The main content area should show a welcome label and have a primary action button. Use the correct slot-based DSL functions (headerSlot, drawerSlot, footerSlot).",
+      "expected_output": "Kotlin DSL code using appLayout { } with headerSlot { }, drawerSlot { }, and footerSlot { } DSL functions. Should NOT use appBar, drawer, content, or footer as those are incorrect. The drawer should contain 3 buttons. Content area should have a label and button with ButtonTheme.PRIMARY.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Create a reusable Kotlin DSL component called `labeledTextField` that combines a label and text field in a column layout. The function should be an extension on HasComponents, use @WebforjDsl annotation, and return a TextField. Then use it to create a form with Email (type EMAIL) and Phone (type TEL) fields. Each field should have appropriate placeholders and validation (isRequired = true).",
+      "expected_output": "Kotlin DSL code that defines a custom labeledTextField function using @WebforjDsl annotation, as an extension function on HasComponents, returning TextField. Uses flexLayout(FlexDirection.COLUMN) internally. Then uses it to create a form with two fields with proper type settings and validation.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Create a button with icon slots using Kotlin DSL. The button should say 'Notifications' and have a badge in the suffix slot showing '5'. Also add a user icon in the prefix slot. Use the prefixSlot { } and suffixSlot { } DSL functions.",
+      "expected_output": "Kotlin DSL code using button { } with prefixSlot { } containing an icon, and suffixSlot { } containing a badge with text '5' and BadgeTheme.DANGER. Should demonstrate proper slot usage patterns.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Create a Composite view called UserDashboard that extends Composite<FlexLayout>. Use the `self.build { }` pattern (not self.apply { }) to configure the layout. Add a header with user info, a list of users in a flex layout, and a floating action button. Use proper Kotlin DSL component creation patterns.",
+      "expected_output": "Kotlin DSL code for a Composite view using self.build { } pattern (not apply { }). Should create a FlexLayout with COLUMN direction, containing user info section, a list area with flexLayout, and demonstrate proper DSL component nesting.",
+      "files": []
+    }
+  ]
+}
