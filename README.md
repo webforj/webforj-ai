@@ -1,13 +1,36 @@
 # webforJ AI
 
-The webforJ plugin for AI coding assistants. Bundles the webforJ MCP
-server and a curated set of Skills so any MCP capable client can build
-and style webforJ applications with up to date knowledge of the
-framework.
+<video src="https://cdn.webforj.com/webforj-documentation/video/craftforJ/intro.mp4" controls></video>
+
+webforJ's AI tooling, in two parts:
+
+- **craftforJ** — the coding agent inside your running app. It reads the
+  live component tree, changes properties and shows you the result,
+  navigates routes, adjusts the theme, and writes Java freely, compiling
+  each edit before you see it and applying it once you approve the diff.
+  Ships with webforJ, nothing to install.
+- **This plugin** — the webforJ MCP server and a curated set of Skills,
+  so any MCP capable client builds and styles webforJ applications with
+  up to date knowledge of the framework. [Install it](#clients)
+
+Turn craftforJ on with two properties in development, then open it with
+`Alt + Shift + D`:
+
+```ini
+webforj.debug = true
+webforj.devtools.craftforj.enabled = true
+```
+
+Projects created with [startforJ](https://docs.webforj.com/startforj) or
+from a webforJ archetype have it enabled already. See the [craftforJ
+documentation](https://docs.webforj.com/docs/craftforj) and the
+[craftforJ assistant](https://docs.webforj.com/docs/ai-tooling/craftforj-assistant)
+page.
 
 ## Clients
 
-Pick yours. Each section covers install, update, and uninstall.
+Everything from here down installs the plugin. Pick your client. Each
+section covers install, update, and uninstall.
 
 <details>
 <summary><b>Claude Code</b></summary>
@@ -507,6 +530,7 @@ MCP tools work automatically in every client:
 - *"What CSS parts and variables does dwc-button expose?"* (uses `styles_get_component`)
 - *"List every --dwc-space-* token."* (uses `styles_list_tokens`)
 - *"Validate my app.css - any unknown --dwc-* tokens?"* (uses `styles_validate_tokens`)
+- *"Check the webforJ imports in this file for classes that don't exist."* (uses `fqcn_validate`)
 - *"Generate a theme from brand color #6366f1."* (uses `create_theme`)
 
 ## What's included
@@ -519,13 +543,14 @@ Remote, hosted at `https://mcp.webforj.com/mcp`. Exposes these tools:
 
 | Tool | What it does |
 | --- | --- |
-| `get_versions` | List the webforJ majors this server knows about, including the current stable, the active SNAPSHOT, and which majors have data available for the styling tools. |
-| `create_project` | Return the Maven archetype command (and follow-up commands) that scaffold a new webforJ project. |
-| `search_knowledge_base` | Search the indexed docs, JavaDoc, code samples, and Kotlin DSL. Returns ranked snippets with categories. |
+| `get_versions` | Report the webforJ versions this server knows about: the latest stable release, the in-development SNAPSHOT, and every major with its status (development, stable, or frozen) plus whether the styling tools have data for it. Call this first when the target version isn't known. |
+| `create_project` | Return the Maven archetype command that scaffolds a new webforJ project, plus the follow-up commands to enter the directory and start the dev server. Can also list the available archetypes and the startforJ generator instead of producing a command. |
+| `search_knowledge_base` | Search webforJ documentation, JavaDoc, code samples, and the Kotlin DSL, along with CSS styling concepts and rules. Returns ranked snippets with titles and categories, and narrows by category. |
 | `get_document` | Pull the full content behind a search result, for migration guides, full tutorials, or long API pages. |
 | `styles_get_component` | Return the real CSS styling surface of a DWC component — CSS custom properties, shadow parts, reflected attributes, and slots. |
 | `styles_list_tokens` | Return the authoritative list of global `--dwc-*` tokens (palette seeds, color shades, spacing, typography, borders). |
-| `styles_validate_tokens` | Validate every `--dwc-*` reference in CSS, Java, MDX, or Markdown text and flag invalid tokens with similar-name suggestions. |
+| `styles_validate_tokens` | Validate every `--dwc-*` reference in CSS, Java, MDX, or Markdown text and flag invalid tokens with ranked similar-name suggestions. Run it on any generated or edited stylesheet before writing it to disk. |
+| `fqcn_validate` | Validate fully qualified class names against the types declared in webforJ source for the target version. Takes an explicit list of names or a Java snippet whose imports it extracts, and returns unknown names with ranked suggestions. Run it on any generated or edited Java before writing it to disk. |
 | `create_theme` | Generate a webforJ theme from a primary HSL color, including `@AppTheme` / `@StyleSheet` snippets and the full stylesheet. |
 
 ### Skills
