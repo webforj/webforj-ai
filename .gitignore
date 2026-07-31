@@ -8,3 +8,4 @@ node_modules/
 *-workspace/
 feedback.json
 target/
+.playwright-mcp

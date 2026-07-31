@@ -1,8 +1,0 @@
-{
-  "name": "cem-extract",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@wc-toolkit/cem-utilities": "^1.0.0"
-  }
-}

@@ -1,0 +1,115 @@
+{
+  "skill_name": "webforj-creating-components",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Integrate UI5 Web Components into this webforJ 26.00 app. Upgrade it to the first bundler-capable stable line (26.01 or newer), then create a reusable typed `Ui5Input` Java component for `ui5-input`, load only the required npm module, expose placeholder, value, disabled, and the component's change event, and add a small routed demo view. The frontend bundler must be the default path; do not copy package files into static resources.",
+      "expected_output": "A webforJ 26.01+ bundler integration using the webforJ build plugin, @BundlePackage/@BundleEntry, and an ElementComposite wrapper with verified properties and event payload.",
+      "expectations": [
+        "LOAD-BEARING: The Maven build config adds/configures the current `com.webforj:webforj-maven-plugin`; Java compilation alone is not treated as sufficient for an npm bundle.",
+        "Updates the webforJ version from 26.00 to 26.01 or newer because bundler annotations are unavailable before 26.01.",
+        "Uses imports `com.webforj.bundle.annotation.BundlePackage` and `com.webforj.bundle.annotation.BundleEntry`.",
+        "Declares `@BundlePackage` for `@ui5/webcomponents` with an explicit npm version range and a narrow `@BundleEntry` for the UI5 Input module rather than importing the whole library.",
+        "Creates a reusable class annotated `@NodeName(\"ui5-input\")` that extends `ElementComposite` (not `Component`, `DwcComponent`, or a built-in component).",
+        "Models `value`, `placeholder`, and `disabled` with verified property/attribute semantics and fluent Java setters; boolean accessors use a natural `isDisabled` form.",
+        "Bridges the real UI5 change/input event to a typed Java event or a correctly configured listener payload without inventing `event.detail.value` if the value actually lives on the host element.",
+        "Adds a routed demo that instantiates the wrapper and visibly reacts to the event.",
+        "Does NOT copy `node_modules` or UI5 distribution files into `src/main/resources/static`, use a CDN, or add a separate npm build script."
+      ],
+      "files": [
+        "evals/files/v26-webforj/pom.xml"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add a reusable Chart.js component to this webforJ 26.00 app. Upgrade it to 26.01 or newer and use the frontend bundler as the default integration path. Chart.js is a normal JavaScript library, not a Web Component. I need a Java `Chart` API that accepts typed chart configuration, can update and resize, emits a point-click event with dataset/index values, and cleans up correctly when removed.",
+      "expected_output": "A TypeScript custom-element adapter under src/main/frontend that owns Chart.js lifecycle, bundled through @BundlePackage/@BundleEntry and exposed through an ElementComposite Java wrapper.",
+      "expectations": [
+        "Uses the webforJ 26.01+ bundler and declares Chart.js through `@BundlePackage` instead of downloading or CDN-loading it.",
+        "Updates the webforJ version from 26.00 to 26.01 or newer before introducing bundler APIs.",
+        "Creates an authored frontend entry under `src/main/frontend` and binds it with `@BundleEntry`.",
+        "The frontend entry registers a hyphenated custom element and imports Chart.js from npm.",
+        "The custom element guards duplicate initialization, supports configuration set before connection, and calls Chart.js `destroy()` during disconnect/recreation.",
+        "The Java wrapper's `@NodeName` exactly matches the registered custom-element tag and extends `ElementComposite`.",
+        "Chart configuration is represented with typed Java model classes/records rather than `Map<String, Object>` as the public API.",
+        "Update/resize behavior uses custom-element methods called with `callJsFunctionAsync`/`callJsFunctionVoidAsync`, not user-data string interpolation in `executeJs`.",
+        "Point-click is dispatched from the adapter with a minimal serializable payload and bridged to a typed Java event exposing dataset and point indexes.",
+        "The normal package/build phase succeeds or the output clearly identifies any external dependency resolution blocker."
+      ],
+      "files": [
+        "evals/files/v26-webforj/pom.xml"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Build a reusable `CustomerSearchBox` from existing webforJ components: a text field, search button, clear button, and a status area. It should expose a small Java API and a search event, but it must not use custom JavaScript or frontend packages.",
+      "expected_output": "A focused Composite that encapsulates built-in webforJ components and exposes domain methods/events without introducing bundler or ElementComposite machinery.",
+      "expectations": [
+        "Implements the component with `Composite` and a suitable bound webforJ layout.",
+        "Does NOT extend `Component`, `DwcComponent`, `TextField`, `Button`, or another built-in component.",
+        "Keeps the internal text field, buttons, and status component private and exposes a small domain-oriented fluent API.",
+        "Provides a removable Java-side search listener/event and includes the current query in the event without a browser round trip.",
+        "Configures normal children/layout/listeners in the constructor rather than using lifecycle hooks unnecessarily.",
+        "Does NOT add `@BundleEntry`, `@BundlePackage`, `@JavaScript`, npm files, or frontend source files.",
+        "Adds targeted tests for the public API and listener registration."
+      ],
+      "files": [
+        "evals/files/v26-webforj/pom.xml"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "This project is staying on webforJ 25.x. Wrap the existing third-party custom element file `src/main/resources/static/vendor/acme-toggle/acme-toggle.js` as a reusable Java component. The element tag is `acme-toggle`, exposes boolean `checked` and `disabled` properties, and emits `toggle-change` with `{ checked }` in `event.detail`. Do not upgrade the framework.",
+      "expected_output": "A version-aware ElementComposite wrapper using @JavaScript with ws:// and type=module, with no 26.01 bundler APIs.",
+      "expectations": [
+        "Recognizes that webforJ 25.x predates the 26.01 frontend bundler and does NOT use `@BundleEntry`, `@BundlePackage`, or the new build plugin.",
+        "Loads the existing file with `@JavaScript` using a correct `ws://vendor/acme-toggle/acme-toggle.js` path and `type=\"module\"`.",
+        "Creates `@NodeName(\"acme-toggle\")` wrapper extending `ElementComposite`.",
+        "Uses boolean PropertyDescriptors with fluent setters and `isChecked`/`isDisabled` getters.",
+        "Creates a typed event for `toggle-change` and extracts `event.detail.checked` without broad fallback expressions.",
+        "Does NOT copy, rewrite, or CDN-replace the provided third-party file.",
+        "Adds targeted PropertyDescriptor/listener tests compatible with the project's existing test setup."
+      ],
+      "files": [
+        "evals/files/v25-webforj/pom.xml",
+        "evals/files/eval-4/src/main/resources/static/vendor/acme-toggle/acme-toggle.js"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add a reusable `MapView` component to this webforJ 26.00 app backed by the Leaflet npm package. Upgrade it to 26.01 or newer and use the frontend bundler. I need a Java API for center coordinates and zoom, and a marker-click event. Leaflet also ships its own stylesheet that must load with the component.",
+      "expected_output": "A bundler integration that works around Leaflet being an unscoped npm package: a local frontend entry importing leaflet and its CSS, bound with @BundleEntry, plus an ElementComposite wrapper.",
+      "expectations": [
+        "LOAD-BEARING: Does NOT write `@BundleEntry(\"leaflet/dist/leaflet.js\")` or any other unscoped npm module path, because only `@scope`-prefixed values are treated as npm specifiers and an unscoped one is silently dropped from the build.",
+        "Declares `@BundlePackage(value = \"leaflet\", version = ...)` with an explicit semver range.",
+        "Authors a local entry under `src/main/frontend` that imports `leaflet` and imports `leaflet/dist/leaflet.css` for its side effect, and binds that file with `@BundleEntry`.",
+        "Updates the webforJ version from 26.00 to 26.01 or newer and adds/configures `com.webforj:webforj-maven-plugin` with `<extensions>true</extensions>`.",
+        "The entry registers a hyphenated custom element that creates the Leaflet map in `connectedCallback`, guards duplicate initialization, and calls Leaflet `remove()` on disconnect.",
+        "The Java wrapper extends `ElementComposite` with a matching `@NodeName`, exposes typed center/zoom setters, and bridges marker click to a typed event with a minimal payload.",
+        "Does NOT add a CDN link, copy Leaflet files into `src/main/resources/static`, or use `@StyleSheet` for the Leaflet CSS.",
+        "Verification runs the package/build phase rather than treating `mvn compile` as sufficient."
+      ],
+      "files": [
+        "evals/files/v26-webforj/pom.xml"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "In this webforJ 26.00 app, build a reusable `PriceTag` component as a Lit element, and style it with SCSS that uses variables from a shared partial living in a `styles` folder. Upgrade the project as needed. The component takes an amount and a currency and emits a click event carrying the amount.",
+      "expected_output": "A Lit entry plus a SCSS entry bound to the wrapper class, with the SCSS load path configured in bun.config.ts, and no manually enabled SCSS extension.",
+      "expectations": [
+        "Updates webforJ from 26.00 to 26.01 or newer and adds the webforJ build plugin.",
+        "Declares `@BundlePackage` for `lit` and authors the element under `src/main/frontend`, bound with `@BundleEntry`.",
+        "Does NOT enable the SCSS extension by id or add `sass` as a `@BundlePackage`; the extension activates automatically because a `.scss` source is present and declares `sass` itself.",
+        "Sets the SCSS load path in `src/main/frontend/bun.config.ts` under the `webforj-scss` key so the shared partial resolves, rather than using relative `../..` paths or duplicating the partial.",
+        "Binds the annotations to the reusable `PriceTag` class itself, not to a demo view, so the component carries its frontend wherever it is used.",
+        "Uses `PropertyDescriptor` for amount and currency with fluent, validated Java setters.",
+        "Bridges the click to a typed `ComponentEvent` extracting the amount from the event detail without a broad fallback expression that would discard a zero amount.",
+        "Does NOT author anything under `src/main/frontend/generated`, and does not commit `node_modules`."
+      ],
+      "files": [
+        "evals/files/v26-webforj/pom.xml"
+      ]
+    }
+  ]
+}

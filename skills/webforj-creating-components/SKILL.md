@@ -1,191 +1,347 @@
 ---
 name: webforj-creating-components
-description: "Creates reusable webforJ components from core components, third-party web component libraries, or plain JavaScript libraries. Covers ElementComposite wrappers with PropertyDescriptor and EventName, component extensions with onDidCreate and executeJs, and page-level utilities with EventDispatcher. Use when asked to create, wrap, integrate, or build any custom component in a webforJ project."
+description: "Builds and integrates reusable components in webforJ, including composites made from webforJ controls, third-party Web Components, npm component libraries, and plain JavaScript or TypeScript libraries. Use whenever the user asks to create, wrap, integrate, or expose a custom component, install a frontend package, use @BundleEntry or @BundlePackage, add React/Svelte/Lit code, author SCSS/Less/Tailwind for a component, bridge JavaScript events or properties to Java, or turn a browser widget into a type-safe webforJ API. This skill must be used before hand-copying npm assets or inventing JavaScript interop."
 ---
 
-# Creating Components in webforJ
+# Creating and Integrating Components in webforJ
 
-Build reusable Java components from any source — Custom Elements, plain JS
-libraries, or browser APIs — with type-safe properties, structured events,
-and clean APIs.
+Build the smallest durable bridge between Java and the browser. Prefer a built-in
+webforJ component, then Java composition, then a direct custom-element wrapper.
+Adapt a plain JavaScript library behind a custom element only when it doesn't
+already expose one.
 
-## Choose Your Approach
+## Is this a Java-only component?
 
-There are five paths to creating a reusable webforJ component.
+If the component is built purely from existing webforJ components — no npm
+package, no authored JavaScript or CSS, no third-party custom element — then none
+of the frontend machinery below applies. Write a `Composite`, skip every
+reference file, and stop.
 
-| Path | When to use | Java side | Reference |
-|---|---|---|---|
-| **A. Wrap existing CE library** | Library ships Custom Elements | `ElementComposite` / `ElementCompositeContainer` | [element-composite.md](references/element-composite.md) |
-| **B. Build a Custom Element + wrap** | New visual component, or wrapping a plain JS library | `ElementComposite` / `ElementCompositeContainer` | [extending-components.md](references/extending-components.md) |
-| **C. Compose webforJ components** | Combining existing webforJ components into a reusable unit | `Composite<T>` + concern interfaces | [composition.md](references/composition.md) |
-| **D. Extend an HTML element** | Trivial one-off integration, no Shadow DOM needed | Extend `Div`, `Span`, etc. | [extending-components.md](references/extending-components.md) |
-| **E. Page-level utility** | Browser API or global feature with no DOM widget | Plain Java class + `EventDispatcher` | [extending-components.md](references/extending-components.md) |
+That case is common and cheap to get right, so treat the rest of this skill as
+the exception path. Reading the bundler and interop references for a task that
+never touches the browser costs real time and adds no correctness.
 
-### Path A — Wrap an existing Custom Element library
+Go to [Compose webforJ components](#compose-webforj-components), then
+[Verify](#verify). Everything between is for integrations that cross into the
+browser.
 
-The library already provides `<x-button>`, `<x-dialog>`, etc. Jump straight
-to the [Custom Element Workflow](#custom-element-workflow) below.
+## Bundler-first rule
 
-### Path B — Build a Custom Element, then wrap it (preferred for new JS components)
+On webforJ 26.01 and newer, **the frontend bundler is the default path** for
+every frontend concern that is more than an already-owned static file: npm
+packages, authored JavaScript/TypeScript, React/Svelte/Lit components, SCSS,
+Less, Tailwind, imported CSS and assets, and frontend tests. Reach for
+`@BundlePackage` and `@BundleEntry` first, not as an advanced alternative.
 
-When no existing Custom Element fits your need, **write one in vanilla JS**
-first, then wrap it with `ElementComposite` — exactly the same Java-side
-pattern as Path A. This applies whether you're building a completely new widget
-or wrapping a plain JS library that doesn't ship its own Custom Element.
+Use `@JavaScript`/`@StyleSheet` instead only when the project predates 26.01, or
+the resource is an already-owned standalone file needing no npm resolution,
+compilation, imports, or asset processing. On 26.01+, state why the bundler adds
+no value before taking that exception. Never hand-copy an npm package into
+`resources/static`, add a separate frontend project, add a CDN `<script>`, or ask
+the user to install Node — the build plugin manages Bun.
 
-See [extending-components.md](references/extending-components.md) for the
-vanilla Custom Element template, the wrapping walkthrough, and a complete
-example.
+Read [references/bundler.md](references/bundler.md) before editing build files or
+loading any third-party resource.
 
-### Path C — Compose webforJ components
+## Start with facts, not assumptions
 
-Combine existing webforJ components (TextField, Button, FlexLayout, etc.) into
-a new reusable component. Extend `Composite<T>`, use `getBoundComponent()` to
-build the internal layout, and implement concern interfaces (`HasValue`,
-`HasLabel`, etc.) to expose a clean API that delegates to inner components.
+1. Read the project's webforJ version from `pom.xml` or `build.gradle`.
+2. Call `webforj-mcp:get_versions` if the target line is unclear.
+3. Search the webforJ knowledge base before using a framework class, annotation,
+   lifecycle hook, or concern interface.
+4. Read the third-party library's package exports and component API. Verify tag
+   names, module paths, properties versus attributes, slots, methods, events,
+   payloads, styling hooks, and cleanup requirements.
+5. For generated Java, run `webforj-mcp:fqcn_validate` before writing it.
 
-See [composition.md](references/composition.md) for the pattern, concern
-interfaces, and a complete example.
+Do not infer a wrapper API from examples for another library. A wrong event name,
+property binding, or package entry usually fails silently in the browser.
 
-### Path D — Extend an HTML element (lightweight fallback)
+## Choose the architecture
 
-Only use this when writing a Custom Element would be overkill — e.g. a one-off
-wrapper that doesn't need Shadow DOM, property bridging, or reuse across
-projects. Extend `Div` (or another HTML element), override `onDidCreate()`,
-initialize via `executeJs()`. See [extending-components.md](references/extending-components.md).
-
-### Path E — Page-level utility
-
-For browser APIs with no visible DOM widget (VirtualKeyboard, Notification,
-geolocation). Plain Java class, `Page.getCurrent().executeJsVoidAsync()`,
-`page.addEventListener()` + `PageEventOptions`, and `EventDispatcher` for
-Java-side events. See [extending-components.md](references/extending-components.md).
-
-## Custom Element Workflow
-
-For Paths A and B. If using Path B, write the JS Custom Element first (see
-[extending-components.md](references/extending-components.md)), then follow
-these steps to create the Java wrapper.
-
-```
-- [ ] Step 0: Setup (once per project)
-- [ ] Step 1: Extract component data
-- [ ] Step 2: Write Java wrappers
-- [ ] Step 3: Write tests
-```
-
-### Step 0: Setup (once per project)
-
-**Always prefer local** — download third-party JS/CSS into `src/main/resources/static/libs/{library}/`.
-Local resources are self-contained and work offline. Only use CDN as a last resort.
-
-1. Install the npm package to a temp directory: `npm install --prefix /tmp/webforj-libs <package-name>`
-2. Copy the required JS/CSS files into `src/main/resources/static/libs/{library}/`
-3. **Scan copied CSS for dependent assets** — run `grep -E "url\(|@font-face|@import" *.css`
-   on the copied CSS files. For every referenced path (fonts, images, other CSS),
-   copy those files too preserving relative paths. Components often need font files,
-   component-specific CSS, or image assets that the base CSS references.
-4. **Verify all files exist on disk** before writing any Java code — `ls -R` the
-   target directory and confirm every referenced asset is present
-5. If the library ships multiple themes, list the available options and ask
-   the user which one to use before proceeding
-6. Use `ws://libs/{library}/` paths in `@JavaScript` and `@StyleSheet` annotations
-
-### Step 1: Extract component data
-
-**Path A — Library has a CEM** (Lit, Stencil, FASTElement, etc.):
-
-Install the script dependency and the target library in `/tmp/webforj-cem/`:
-
-```bash
-npm install --prefix /tmp/webforj-cem @wc-toolkit/cem-utilities <package-name>
-export NODE_PATH=/tmp/webforj-cem/node_modules
-export CEM=$NODE_PATH/<package-name>/custom-elements.json
-# Some packages use dist/ or cdn/ subdirectories — check the library's docs
-```
-
-If the library doesn't ship a CEM but uses Lit, Stencil, or FAST, generate one:
-
-```bash
-npx @custom-elements-manifest/analyzer analyze \
-  --globs "$NODE_PATH/<package-name>/src/**/*.{js,ts}" \
-  --outdir /tmp/webforj-cem
-export CEM=/tmp/webforj-cem/custom-elements.json
-```
-
-Then parse it with the extraction script (`--help` for all options):
-
-```bash
-node scripts/extract-components.mjs --file "$CEM" --list
-node scripts/extract-components.mjs --file "$CEM" --tag x-button
-```
-
-**No CEM and no supported framework** (vanilla JS, proprietary, etc.):
-Read the component's docs, API reference, or source code. Write the spec JSON
-manually. Run `node scripts/extract-components.mjs --format` to see the
-expected format.
-
-### Step 2: Write Java wrappers
-
-Using the spec JSON from Step 1 and the reference files, write the Java wrapper
-class for each component. Use the Decision Table below to choose the right base
-class, property types, event patterns, and concern interfaces.
-
-For each component:
-- Place wrapper in a dedicated sub-package: `components/{component}/`
-  with events in `components/{component}/event/`
-- Add JavaDoc to the class and every public method — pull descriptions
-  from the component's documentation
-- Choose `ElementComposite` or `ElementCompositeContainer` based on slots
-- Create `PropertyDescriptor` fields for each property
-- Model complex objects as Java beans (POJOs), not `Map<String, Object>` —
-  Gson serializes POJOs to JSON automatically
-- Use enums with `@SerializedName` for properties with predefined values (variant, size, etc.)
-- Create standalone event classes in an `event/` sub-package
-- Add slot convenience methods with constants
-- Implement applicable concern interfaces
-- Skip properties that don't make sense server-side
-- Do not add section separator comments (`// --- Properties ---`, etc.)
-
-### Step 3: Write tests
-
-Write JUnit 5 tests for each wrapper using the patterns in
-[testing.md](references/testing.md):
-
-- `@Nested @DisplayName("Properties API")` — `PropertyDescriptorTester.run()`
-  plus fluent setter chain tests
-- `@Nested @DisplayName("Slots API")` — `addTo{Slot}()` tests via
-  `getOriginalElement().getFirstComponentInSlot()`
-- `@Nested @DisplayName("Events API")` — dual listener tests
-  (`onXxx` + `addXxxListener`)
-
-## Decision Table
-
-| Characteristic | Choice |
+| Situation | Use |
 |---|---|
-| No slots | `extends ElementComposite` |
-| Has default/named slots | `extends ElementCompositeContainer` |
-| Predefined values (variant, size) | `enum` with `@SerializedName` on values |
-| Fires custom events | Standalone class in `event/` sub-package + `@EventName` |
-| Needs JS init after attach | Override `onDidCreate()` |
-| CSS custom properties on host | `setStyle("--prop", value)` methods |
-| JS/CSS loading | **Prefer local**: download to `ws://libs/`, verify files exist. CDN only as last resort |
-| Has form behavior | Implement `HasValue<T,V>`, `HasLabel<T>`, `HasRequired<T>`, etc. |
-| Needs focus management | Implement `HasFocus<T>` |
-| Container behavior | `ElementCompositeContainer` (includes `HasComponents`) |
-| JS method calls | `getElement().callJsFunctionAsync()` — prefer async |
+| A built-in webforJ component already solves it | Use the built-in component |
+| Reusable UI made only from webforJ components | `Composite` |
+| One-off use of a custom element with little Java API | `Element` |
+| Reusable/type-safe wrapper for a custom element | `ElementComposite` |
+| Custom element accepts default or named slots | `ElementCompositeContainer` |
+| npm package already registers custom elements | `@BundlePackage` + module `@BundleEntry`, then `Element` or `ElementComposite` |
+| Plain JS/TS library mounts into a DOM node | Author a custom-element adapter under `src/main/frontend`, bundle it, then wrap it |
+| React / Svelte / Lit component | Author it under `src/main/frontend`, expose a custom element, then wrap it |
+| Component-scoped or app-wide styles that must compile | A CSS/SCSS/Less `@BundleEntry` on the owning class |
+| Existing owned standalone JS/CSS file, no npm/compile/import graph | Static annotations as a documented exception |
+| Browser/page API with no widget | A focused Java service using `Page`; don't fake a visual component |
 
-## MCP Tools
+Read [references/architecture.md](references/architecture.md) when the choice is
+not obvious.
 
-`webforj-mcp:webforj-knowledge-base` — component documentation and API reference.
+## The bundler path (webforJ 26.01+)
 
-## References
+### 1. Confirm the build plugin
 
-- [element-composite.md](references/element-composite.md) — Base classes, annotations, concern interfaces, resource loading
-- [composition.md](references/composition.md) — Composite\<T\>, concern interfaces, delegation pattern
-- [extending-components.md](references/extending-components.md) — Building Custom Elements, extending HTML elements, page-level utilities
-- [properties.md](references/properties.md) — PropertyDescriptor patterns, enums, types
-- [events.md](references/events.md) — @EventName, @EventOptions, event data extraction
-- [anti-patterns.md](references/anti-patterns.md) — Common mistakes, validation checklist
-- [testing.md](references/testing.md) — PropertyDescriptorTester + manual test patterns
-- [javascript-interop.md](references/javascript-interop.md) — executeJs, callJsFunction, Page JS, component keyword
+Archetype projects already have it. Add it once to an existing project; declaring
+`<extensions>true</extensions>` binds `bundle`, `test`, and `clean` with no
+execution blocks:
+
+```xml
+<plugin>
+  <groupId>com.webforj</groupId>
+  <artifactId>webforj-maven-plugin</artifactId>
+  <version>${webforj.version}</version>
+  <extensions>true</extensions>
+</plugin>
+```
+
+Gradle applies `com.webforj` through a `buildscript` classpath dependency. Both
+are covered in [references/bundler.md](references/bundler.md).
+
+### 2. Declare packages and entries on the owning class
+
+`@BundlePackage` declares an npm dependency; `@BundleEntry` names what to build.
+Both are repeatable and inherited, and both live on the class that needs them —
+the wrapper component, not a random view.
+
+```java
+import com.webforj.bundle.annotation.BundleEntry;
+import com.webforj.bundle.annotation.BundlePackage;
+
+@BundlePackage(value = "@ui5/webcomponents", version = "^2.0.0")
+@BundleEntry("@ui5/webcomponents/dist/Input.js")
+@NodeName("ui5-input")
+public final class Ui5Input extends ElementComposite {
+}
+```
+
+`@BundleEntry` takes **either** a path relative to `src/main/frontend`
+(`"charts/chart-element.ts"`, `"theme/theme.css"`) **or** a module path inside an
+`@scope`d npm package (`"@ui5/webcomponents/dist/Input.js"`). Declare narrow
+module entries: the build tree-shakes and shares common chunks across entries.
+
+> **Unscoped npm packages cannot be named directly in `@BundleEntry`.** Only a
+> value starting with `@` is treated as an npm specifier. `@BundleEntry("leaflet/dist/leaflet.js")`
+> resolves to no local file, logs a warning, and is silently dropped from the
+> build. For an unscoped package, author a one-line local entry that imports it
+> and bind that file instead.
+
+### 3. Author frontend sources under `src/main/frontend`
+
+Put adapters, framework components, styles, and their tests there. `.ts`, `.tsx`,
+`.js`, `.jsx`, `.css`, `.scss`, `.sass`, and `.less` all compile. Import CSS for
+its side effect; import assets and resolve the emitted URL against
+`import.meta.url`. Never author into `src/main/frontend/generated` — the build
+wipes and owns that directory.
+
+### 4. Load the right compiler
+
+SCSS/Sass and Less extensions activate automatically when a source of that type
+is present. Tailwind ships off and is enabled by id. React needs no extension —
+Bun compiles its TypeScript and JSX directly; you only declare its packages.
+
+### 5. Run the real build
+
+`mvn package` / `gradle build` compiles the frontend (`prepare-package`), and
+`mvn test` runs the Bun frontend tests. `mvn compile` alone proves nothing about
+the frontend. During development, `mvn compile webforj:watch spring-boot:run`
+rebuilds on change; adding or removing a `@BundleEntry` takes effect on the next
+restart.
+
+### Static exception or webforJ before 26.01
+
+```java
+@JavaScript(
+    value = "ws://components/my-widget.js",
+    attributes = @Attribute(name = "type", value = "module")
+)
+@StyleSheet("ws://components/my-widget.css")
+```
+
+`ws://` maps to `src/main/resources/static`. `context://` addresses classpath
+resources for APIs that read and inline content. Prefer project-owned static
+files over a pinned HTTPS URL. Never use bundler annotations on a version that
+predates 26.01.
+
+## Implement the selected path
+
+### Compose webforJ components
+
+Extend `Composite`, keep internals private, configure the bound component in the
+constructor, and expose a domain-focused API. Never extend `Component`,
+`DwcComponent`, or a final built-in component.
+
+```java
+public final class SearchBox extends Composite<FlexLayout> {
+  private final FlexLayout self = getBoundComponent();
+  private final TextField query = new TextField("Search");
+  private final Button submit = new Button("Search");
+  private final EventDispatcher dispatcher = new EventDispatcher();
+
+  public SearchBox() {
+    self.add(query, submit);
+    submit.onClick(event ->
+        dispatcher.dispatchEvent(new SearchEvent(this, query.getValue())));
+  }
+
+  public SearchBox setValue(String value) {
+    query.setValue(value);
+    return this;
+  }
+
+  public String getValue() {
+    return query.getValue();
+  }
+
+  public ListenerRegistration<SearchEvent> onSearch(
+      EventListener<SearchEvent> listener) {
+    return dispatcher.addListener(SearchEvent.class, listener);
+  }
+
+  public static final class SearchEvent extends EventObject {
+    private final String query;
+
+    public SearchEvent(SearchBox source, String query) {
+      super(source);
+      this.query = query;
+    }
+
+    public String getQuery() {
+      return query;
+    }
+  }
+}
+```
+
+Use `initBoundComponent()` only when the bound component needs a parameterized
+constructor. Use `onDidCreate`, `whenAttached`, or `onDidDestroy` only for
+DOM-dependent setup or real cleanup.
+
+For Java-only composite events, use `EventDispatcher`: register listeners with
+`addListener(EventClass.class, listener)` and dispatch an `EventObject` carrying
+already-known Java state. DOM `ComponentEvent` annotations belong to browser
+events, not ordinary composite business events.
+
+### Wrap a custom element
+
+Use `@NodeName` with `ElementComposite`; switch to `ElementCompositeContainer`
+when the element exposes slots.
+
+```java
+@NodeName("acme-rating")
+public final class Rating extends ElementComposite {
+  private final PropertyDescriptor<Integer> value =
+      PropertyDescriptor.property("value", 0);
+
+  public Rating setValue(int value) {
+    set(this.value, value);
+    return this;
+  }
+
+  public int getValue() {
+    return get(value);
+  }
+}
+```
+
+Map runtime state and non-string values to properties. Map markup configuration,
+ARIA hooks, and CSS-selector state to attributes. Use typed beans for structured
+objects and enums with `@SerializedName` for fixed string values. Validate public
+inputs before calling `set`.
+
+Add concern interfaces only when their forwarding behavior matches the wrapped
+element — not because the name sounds useful. The flip side matters just as much:
+when the element genuinely has that state, the concern is the right way to expose
+it. Enablement in particular is framework-managed, so model it with
+`HasEnablement`; a `disabled` `PropertyDescriptor` is overwritten when the
+component attaches.
+
+Read [references/element-wrappers.md](references/element-wrappers.md) for
+properties, attributes, synchronization, slots, methods, and concerns.
+
+### Adapt a plain JavaScript library
+
+Do not bury a stateful library in repeated `executeJs` strings. Create a small
+custom element in `src/main/frontend` that:
+
+1. owns a stable mount element;
+2. initializes the library in `connectedCallback`;
+3. avoids duplicate initialization on reconnect;
+4. destroys/unsubscribes in `disconnectedCallback`;
+5. exposes Java-friendly properties and methods;
+6. dispatches documented `CustomEvent`s with minimal serializable payloads.
+
+Bundle the adapter and its npm dependency, then wrap the registered tag with
+`ElementComposite`. This separates browser lifecycle from the Java API and makes
+the integration testable and reusable. The same shape carries React, Svelte, and
+Lit: keep framework state inside the frontend component and let Java depend only
+on the custom-element contract.
+
+Read [references/javascript-adapters.md](references/javascript-adapters.md).
+
+## Bridge events and methods deliberately
+
+Create a typed `ComponentEvent<T>` annotated with `@EventName` and
+`@EventOptions` when callers need a reusable Java event API. Extract only the
+fields Java consumes. Add a target filter only when bubbled child events could be
+mistaken for the host event.
+
+For high-frequency events, debounce or throttle client-side with
+`ElementEventOptions`. Do not fetch the same state from the client after an event
+if it can travel in the event payload.
+
+Call existing element methods with `callJsFunctionAsync` or
+`callJsFunctionVoidAsync`; arguments are serialized safely and component
+arguments resolve to client elements after attachment. Use `executeJs*` only for
+logic that cannot be represented as a method call. Never concatenate user values
+into JavaScript source.
+
+Read [references/events-and-interop.md](references/events-and-interop.md).
+
+## Style without guessing
+
+Prefer the component's documented CSS custom properties, shadow parts, slots, and
+host attributes. For DWC components, query `webforj-mcp:styles_get_component`
+before writing `--dwc-*` variables or `::part()` selectors, and validate tokens
+with `webforj-mcp:styles_validate_tokens`.
+
+For third-party components, use only styling hooks documented by that library.
+Global CSS cannot pierce an unexported shadow root — a Tailwind utility or an app
+stylesheet styles a component's outer box, never its internals.
+
+For a component's own styles on 26.01+, ship a CSS/SCSS/Less `@BundleEntry` bound
+to the component class so the styles load exactly when the component does.
+
+## Complete the integration
+
+The deliverable is not only a wrapper class. Cover every relevant surface:
+
+- build plugin and dependency declarations;
+- frontend entry/adapter and imported styles/assets;
+- Java wrapper or composite;
+- typed properties, methods, events, and slots actually requested;
+- cleanup for observers, editors, charts, maps, and subscriptions;
+- unit tests for server-side API wiring;
+- Bun tests for authored frontend logic;
+- browser-level test when behavior depends on custom-element registration,
+  shadow DOM, or third-party runtime behavior.
+
+Keep the public API smaller than the third-party API. Expose what the application
+needs now, with types and names natural to Java.
+
+## Verify
+
+1. Validate imports with `webforj-mcp:fqcn_validate`.
+2. Run the project's targeted compile/tests.
+3. For bundler integrations, run `mvn package`/`gradle build` so the frontend is
+   actually compiled, then confirm the log says `resolved N entry source(s)` with
+   N matching the entries you declared. A dropped entry never fails the build, and
+   the two ways to lose one differ: an unresolvable path logs `no source file
+   under ...`, while a missing `src/main/frontend` directory drops every entry
+   with no warning at all. Checking the count catches both; checking for the
+   warning catches only one.
+4. Inspect browser console and network failures when an app can be launched.
+5. Confirm the custom element is defined, the entry loads once, properties and
+   events work, and teardown doesn't leak observers or duplicate instances.
+
+Use [references/verification.md](references/verification.md) as the final
+checklist. Read [references/testing.md](references/testing.md) for executable
+unit, frontend, and browser-test patterns.

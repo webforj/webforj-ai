@@ -1,119 +1,97 @@
-# Testing Patterns
+# Component Integration Testing
 
-## Test Class Structure
+Three layers, each proving something the others cannot: Java unit tests for the
+server-side API, Bun tests for authored frontend logic, browser tests for the
+real DOM contract.
 
-Use `@Nested` inner classes with `@DisplayName`:
+## Java: property descriptors
 
 ```java
-class MyButtonTest {
-  MyButton component;
+import com.webforj.component.element.PropertyDescriptorTester;
 
-  @BeforeEach
-  void setUp() { component = new MyButton(); }
-
-  @Nested @DisplayName("Properties API")
-  class PropertiesApi { ... }
-
-  @Nested @DisplayName("Slots API")
-  class SlotsApi { ... }
-
-  @Nested @DisplayName("Events API")
-  class EventsApi { ... }
+@Test
+void propertiesRoundTrip() {
+  PropertyDescriptorTester.run(AcmeToggle.class, new AcmeToggle());
 }
 ```
 
-## PropertyDescriptorTester
+Use `@PropertyExclude` for a descriptor that can't follow the conventional test,
+or `@PropertyMethods(getter = "...", setter = "...", target = SomeClass.class)`
+when accessors use different names or live elsewhere. There is also an overload
+taking a filter predicate when only some descriptors should be covered.
 
-Automatically validates all PropertyDescriptor fields — scans for `is`/`get`
-getters and `set` setters, verifies round-trip consistency:
+Client-fetched getters (`get(descriptor, true)`) need a browser test; a
+server-only unit test can't prove live DOM state.
+
+## Java: fluent API and validation
 
 ```java
 @Test
-void shouldSetGetProperties() {
-  PropertyDescriptorTester.run(MyButton.class, component);
+void setterIsFluentAndValidates() {
+  Rating rating = new Rating();
+  assertSame(rating, rating.setValue(3));
+  assertEquals(3, rating.getValue());
+  assertThrows(IllegalArgumentException.class, () -> rating.setValue(-1));
 }
 ```
 
-### Filter Callback
+## Java: slots
 
-Skip descriptors that need special handling:
+Expose the underlying `Element` package-privately only when a test needs it, then
+assert the exact named/default slot with `getFirstComponentInSlot` or
+`getComponentsInSlot`.
 
-```java
-@Test
-void shouldSetGetProperties() {
-  PropertyDescriptorTester.run(MyButton.class, component,
-      descriptor -> !Arrays.asList("opened", "value")
-          .contains(descriptor.getName()));
-}
+## Java: composite events
+
+Register a listener, trigger public behavior, assert its payload, remove the
+returned registration, trigger again, and assert no second call. Merely counting
+listeners doesn't prove dispatch or removability.
+
+## Frontend: Bun tests
+
+Authored frontend logic is tested with the Bun test runner, and it runs as part
+of the build — `mvn test` runs it alongside the Java tests, and a failing
+frontend test fails the build. No extra command to invoke.
+
+Tests live under `src/main/frontend` next to the sources they cover. A file named
+`*.test.ts`, `*.spec.ts`, `*_test.*`, or `*_spec.*` is a test.
+
+```ts title="src/main/frontend/charts/config.ts"
+export const clampPointIndex = (index: number, length: number): number =>
+  Math.min(Math.max(index, 0), Math.max(length - 1, 0));
 ```
 
-### Annotations
+```ts title="src/main/frontend/charts/config.test.ts"
+import { expect, test } from "bun:test";
+import { clampPointIndex } from "./config";
 
-- `@PropertyExclude` on a descriptor field — PropertyDescriptorTester skips it
-- `@PropertyMethods(getter = "isOpen", setter = "setOpen")` — custom names
-- `@PropertyMethods(targetClass = MyComp.class)` — when getter/setter is inherited
-
-## getOriginalElement()
-
-Package-private method on the component for test access to the underlying Element:
-
-```java
-// In the component class
-Element getOriginalElement() {
-  return getElement();
-}
+test("clamps below zero", () => {
+  expect(clampPointIndex(-4, 5)).toBe(0);
+});
 ```
 
-Used in tests to verify slot operations and element state:
+Cover the parts of an adapter that are pure logic: payload shaping, option
+merging, index math, serialization. Custom-element lifecycle needs a DOM, so keep
+that in the browser layer rather than faking it here.
 
-```java
-component.addToHeader(mockComp);
-assertEquals(mockComp,
-    component.getOriginalElement().getFirstComponentInSlot("header"));
-```
+Extra runner arguments go through `testArgs` — for example a JUnit reporter for
+CI. A reporter output path must be absolute, because Bun runs from the frontend
+source root and won't create the directory.
 
-## Slot Tests
+## Browser: DOM and custom-element behavior
 
-```java
-@Nested @DisplayName("Slots API")
-class SlotsApi {
-  @Test
-  void shouldAddToHeader() {
-    Component mock = mock(Component.class);
-    component.addToHeader(mock);
-    assertEquals(mock,
-        component.getOriginalElement().getFirstComponentInSlot("header"));
-  }
+Use a browser test to prove:
 
-  @Test
-  void shouldAddToDefaultSlot() {
-    Component mock = mock(Component.class);
-    component.add(mock);
-    assertTrue(
-        component.getOriginalElement().getComponentsInSlot("").contains(mock));
-  }
-}
-```
+- the bundle or static script registers the expected tag;
+- interaction dispatches the documented event;
+- `false`, `0`, empty strings, and numeric payloads survive extraction;
+- Java receives the typed values;
+- a client-fetched getter reads the live value.
 
-## Event Tests
+For editors, charts, and maps, attach, remove, and reattach the component. Assert
+the old instance was destroyed, one current instance remains, and an event fires
+once rather than accumulating duplicate handlers.
 
-Verify both listener registration methods:
-
-```java
-@Nested @DisplayName("Events API")
-class EventsApi {
-  @Test
-  void shouldAddShowListener() {
-    component.onShow(event -> {});
-    assertEquals(1,
-        component.getEventListeners(ShowEvent.class).size());
-  }
-
-  @Test
-  void shouldAddShowListenerViaAdd() {
-    component.addShowListener(event -> {});
-    assertEquals(1,
-        component.getEventListeners(ShowEvent.class).size());
-  }
-}
-```
+Run `mvn package` / `gradle build` before browser tests so the generated frontend
+is the artifact under test. A test run against a stale or absent bundle proves
+nothing.
