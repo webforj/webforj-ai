@@ -9,53 +9,47 @@ the source.
 - `skills/` is the single place to edit skill content. Claude Code,
   Copilot CLI, Gemini CLI, and VS Code all read from here directly.
 - `.mcp.json` is the single place to define the MCP server connection.
-- Per-client plugin manifests live at the path each client expects:
+- `plugin.json` and `mcp.json` at the repo root are the portable
+  [Agent Plugins 1.0.0](https://agent-plugins.org/) manifests. Clients
+  that implement the standard read these and need nothing else.
+- Per-client manifests live at the path each client expects:
   `.claude-plugin/` (Claude Code), `.github/plugin/` (Copilot CLI),
-  `gemini-extension.json` (Gemini CLI) at the repo root, and
-  `plugins/webforj/.codex-plugin/` (Codex, subdirectory required).
-  Each is authored directly; they do not duplicate each other.
+  `gemini-extension.json` (Gemini CLI), and `.codex-plugin/` (Codex,
+  legacy format). Each is authored directly; they do not duplicate
+  each other.
 
-### Why `plugins/webforj/` exists
+### Repo root is the plugin root
 
-Codex CLI requires each plugin to be a self-contained subdirectory
-under a marketplace root. Other clients (Claude Code, Copilot CLI,
-Gemini CLI) read their manifests from the repo root directly.
+The whole repository *is* the plugin. Agent Plugins 1.0.0 fixes where
+the portable pieces live — `plugin.json` and `mcp.json` at the root,
+skills in `skills/` — and every client reads that one copy. There is
+no per-client bundle to keep in sync.
 
-`plugins/webforj/` holds the Codex plugin bundle:
+Two MCP files exist on purpose and are not duplicates of convenience:
 
-- `plugins/webforj/.codex-plugin/plugin.json` is the source of truth
-  for the Codex plugin manifest. Edit it directly when you need to
-  change Codex-specific fields.
-- `plugins/webforj/.mcp.json` and `plugins/webforj/skills/` are
-  **rebuild artifacts** produced by `scripts/sync.mjs`. Never edit
-  these — edit the root versions and run sync.
+- `mcp.json` is the portable manifest. It uses the standard's
+  `streamable-http` transport name.
+- `.mcp.json` is what Claude Code and legacy Codex auto-discover, and
+  it doubles as the project-scoped MCP config for anyone working in
+  this repo. It uses the `http` transport name.
+
+Change the server URL in both, or neither.
 
 ## Common Tasks
 
 ### Edit an existing skill
 
 1. Change files under `skills/<skill-name>/`.
-2. Run:
-
-   ```bash
-   node scripts/sync.mjs
-   ```
-
-3. Commit both the root `skills/` change and the mirrored
-   `plugins/webforj/skills/` change.
+2. Commit. Every client reads `skills/` directly — there is nothing
+   to mirror or regenerate.
 
 ### Add a new skill
 
 1. Create `skills/<new-skill-name>/SKILL.md` with frontmatter
    (`name`, `description`). Add references and scripts as needed.
-2. Run:
+2. Commit.
 
-   ```bash
-   node scripts/sync.mjs
-   ```
-
-Claude Code, Copilot CLI, and Gemini CLI auto-discover the new skill
-from `skills/`. Codex picks it up from the sync'd copy. No manifest
+All clients auto-discover the new skill from `skills/`. No manifest
 edits needed.
 
 ### Evaluate a skill
@@ -80,10 +74,12 @@ Concretely, before running `/eval-skill`:
 
 ### Update the MCP server URL
 
-1. Edit `.mcp.json` at the repo root.
-2. Run `node scripts/sync.mjs`.
-3. Also update `server.json` (`remotes[0].url`) and README snippets if
-   the URL appears elsewhere.
+1. Edit **both** `mcp.json` and `.mcp.json` at the repo root. They
+   describe the same server in two transport spellings; leaving them
+   out of step means some clients silently keep the old URL.
+2. Also update `server.json` (`remotes[0].url`), `gemini-extension.json`
+   (`mcpServers.webforj-mcp.httpUrl`), and README snippets if the URL
+   appears elsewhere.
 
 ### Release a new version
 
@@ -96,9 +92,8 @@ Concretely, before running `/eval-skill`:
    ```
 
    This updates the `version` field in every manifest that carries one
-   (Claude, Copilot, Gemini, Codex, server.json, marketplace.json) and
-   auto-runs `sync.mjs` to mirror root `.mcp.json` and `skills/` into
-   `plugins/webforj/`.
+   (Agent Plugins `plugin.json`, Claude, Copilot, Gemini, Codex,
+   `server.json`, `marketplace.json`).
 
 3. Commit and tag:
 
@@ -111,8 +106,11 @@ Concretely, before running `/eval-skill`:
 
 ### Add support for a new AI client
 
-Most clients follow the Agent Skills open standard, so `skills/` alone
-may be enough (they read skills directly from a repo URL or clone).
+Check whether the client implements
+[Agent Plugins 1.0.0](https://agent-plugins.org/) first — if it does,
+the root `plugin.json` and `mcp.json` already cover it and no new file
+is needed. Failing that, many clients follow the Agent Skills open
+standard, so `skills/` alone may be enough.
 
 If the client needs its own manifest:
 
@@ -120,7 +118,4 @@ If the client needs its own manifest:
    docs).
 2. If the manifest has a `version` field, add its path to the
    `targets` array in `scripts/bump.mjs` so future bumps update it.
-3. If the client requires a subdirectory layout like Codex, add a new
-   mirror entry in `scripts/sync.mjs` and the corresponding
-   `plugins/<name>/` subdirectory.
-4. Add an "Install" and "Uninstall" section in `README.md`.
+3. Add an "Install" and "Uninstall" section in `README.md`.

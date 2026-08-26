@@ -32,6 +32,12 @@ page.
 Everything from here down installs the plugin. Pick your client. Each
 section covers install, update, and uninstall.
 
+This plugin ships as a portable
+[Agent Plugins 1.0.0](https://agent-plugins.org/) package, so clients
+that implement the standard can install it straight from the repository
+without a client-specific manifest. The sections below cover the
+clients we test against, including those that use their own format.
+
 <details>
 <summary><b>Claude Code</b></summary>
 

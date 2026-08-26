@@ -4,7 +4,6 @@
 // Example: node scripts/bump.mjs 0.2.0
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,10 +24,11 @@ if (!SEMVER.test(newVersion)) {
 
 // Each entry: [relativeFile, [...jsonPaths]] — every path is a dotted json field to set to newVersion.
 const targets = [
+  ["plugin.json",                                     ["version"]],
   [".claude-plugin/plugin.json",                      ["version"]],
   [".claude-plugin/marketplace.json",                 ["metadata.version", "plugins.0.version"]],
   [".github/plugin/plugin.json",                      ["version"]],
-  ["plugins/webforj/.codex-plugin/plugin.json",       ["version"]],
+  [".codex-plugin/plugin.json",                       ["version"]],
   ["gemini-extension.json",                           ["version"]],
   ["server.json",                                     ["version"]],
 ];
@@ -58,7 +58,4 @@ for (const [relPath, paths] of targets) {
   console.log(`bump  ${relPath} (${paths.join(", ")})`);
 }
 
-console.log(`\nAll root manifests bumped to ${newVersion}. Syncing subdirectories...`);
-
-// Propagate root changes into plugins/<name>/ (Codex subdirectory requirement).
-execSync(`node "${join(__dirname, "sync.mjs")}"`, { cwd: ROOT, stdio: "inherit" });
+console.log(`\nAll manifests bumped to ${newVersion}.`);
