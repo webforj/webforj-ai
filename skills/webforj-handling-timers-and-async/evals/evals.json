@@ -14,7 +14,7 @@
         "The `Interval`'s elapsed listener body sets components directly (no `Environment.runLater` wrap, since `Interval` runs on the UI thread). This assertion fails if the listener body wraps component mutations in `Environment.runLater(...)`. It also fails (NOT vacuously) if no `Interval` was constructed at all (i.e. the agent used a banned mechanism)."
       ],
       "files": [
-        "evals/files/v25-webforj/pom.xml",
+        "evals/files/v26-webforj/pom.xml",
         "evals/files/eval-1/src/main/java/com/example/evalbase/views/StockView.java"
       ]
     },
@@ -27,50 +27,52 @@
         "Calls `debouncer.run(() -> ...)` from inside the input event handler so each keystroke resets the timer",
         "Calls `debouncer.cancel()` from the view's destroy hook (e.g. inside `onDidDestroy()` or `onDestroy()`)",
         "Does NOT introduce a `java.util.Timer`, `javax.swing.Timer`, `ScheduledExecutorService`, `CompletableFuture.runAsync`, an `ExecutorService`, a raw `new Thread(...)`, or any hand-rolled timestamp-based debouncing for the debounce mechanism",
-        "Every UI component mutation in the file is reachable only from the UI thread. If the agent introduces ANY non-UI thread (CompletableFuture, ExecutorService, Thread, ScheduledExecutorService), every UI mutation in that thread's body is wrapped in `Environment.runLater(...)`. Mutating a component directly from a non-UI thread (e.g. `resultsList.add(...)` inside a `CompletableFuture.runAsync` body without `runLater`) is broken and would throw `IllegalStateException` at runtime."
+        "Every UI component mutation in the file is reachable only from the UI thread. If the agent introduces ANY non-UI thread (CompletableFuture, ExecutorService, Thread, ScheduledExecutorService), every UI mutation in that thread's body is wrapped in `Environment.runLater(env, ...)` where `env` was read with `Environment.getCurrent()` on the UI thread before the work started. Mutating a component directly from a non-UI thread (e.g. `resultsList.add(...)` inside a `CompletableFuture.runAsync` body without `runLater`) is broken. Calling the one-argument `Environment.runLater(() -> ...)` or reading `Environment.getCurrent()` inside the background body also fails this assertion."
       ],
       "files": [
-        "evals/files/v25-webforj/pom.xml",
+        "evals/files/v26-webforj/pom.xml",
         "evals/files/eval-2/src/main/java/com/example/evalbase/views/SearchView.java"
       ]
     },
     {
       "id": 3,
       "prompt": "I have a long CPU-bound calculation that takes ~10 seconds. I need to run it without freezing the UI and update a progress bar from 0 to 100 as it runs. Cancel cleanly if the view is destroyed.",
-      "expected_output": "The agent runs the calculation on a managed `ExecutorService` (or `CompletableFuture.runAsync` with an explicit executor), wraps every UI update inside `Environment.runLater(...)`, captures every returned `PendingResult` so they can be cancelled, uses a `volatile boolean isCancelled` cooperative flag the worker checks each iteration, and cancels both the task and all pending UI updates in the view's destroy hook.",
+      "expected_output": "The agent runs the calculation on a managed `ExecutorService` (or `CompletableFuture.runAsync` with an explicit executor), reads `Environment.getCurrent()` on the UI thread before starting the work, wraps every UI update inside `Environment.runLater(env, ...)` with that value, captures every returned `PendingResult` so they can be cancelled, uses a `volatile boolean isCancelled` cooperative flag the worker checks each iteration, and cancels both the task and all pending UI updates in the view's destroy hook.",
       "expectations": [
-        "Wraps every UI mutation that runs on a background thread in `Environment.runLater(...)` (from `com.webforj.Environment`)",
-        "Captures the `PendingResult` returned by `Environment.runLater(...)` for at least the progress updates so they can be cancelled later",
+        "Reads `Environment.getCurrent()` into a local or field on the UI thread (the click handler, constructor or lifecycle hook that starts the work), NOT inside the background body",
+        "Wraps every UI mutation that runs on a background thread in `Environment.runLater(env, ...)` (from `com.webforj.Environment`) passing that `Environment` as the first argument. A call to the one-argument `Environment.runLater(() -> ...)` or `Environment.runLater(supplier)` fails this assertion, that overload is deprecated",
+        "Captures the `PendingResult` returned by `Environment.runLater(env, ...)` for at least the progress updates so they can be cancelled later",
         "Uses a `volatile boolean isCancelled` (or equivalent) flag that the background worker checks each iteration to support cooperative cancellation",
-        "Runs the long task on a managed `ExecutorService` or `CompletableFuture.runAsync(..., executor)` started from inside the view (i.e. the worker thread inherits the `Environment` context)",
+        "Runs the long task on a managed `ExecutorService` or `CompletableFuture.runAsync(..., executor)` started from inside the view",
         "Uses a single-thread daemon executor pattern (`Executors.newSingleThreadExecutor(...)` with `setDaemon(true)`) when the executor is owned by the view",
         "On view destroy, sets the cancellation flag, cancels the running task with `cancel(true)`, cancels every tracked `PendingResult` whose `isDone()` is false, AND shuts down the executor with `executor.shutdown()`",
         "Guards component access on the cancellation path with `if (!component.isDestroyed()) { ... }` (or equivalent) so a late-firing cancel does not write to a torn-down component",
         "Properly handles `InterruptedException` inside the worker loop (catches it, restores the interrupt flag with `Thread.currentThread().interrupt()`, and exits the loop)",
-        "Does NOT call `progressBar.setValue(...)` or any other component method directly from the background thread (every UI mutation goes through `Environment.runLater`)",
+        "Does NOT call `progressBar.setValue(...)` or any other component method directly from the background thread (every UI mutation goes through `Environment.runLater(env, ...)`)",
         "Does NOT use `java.util.Timer`, `javax.swing.Timer`, or a raw `new Thread(...)` from a static field or static initializer for the work"
       ],
       "files": [
-        "evals/files/v25-webforj/pom.xml",
+        "evals/files/v26-webforj/pom.xml",
         "evals/files/eval-3/src/main/java/com/example/evalbase/views/LongTaskView.java"
       ]
     },
     {
       "id": 4,
       "prompt": "My app has a service that runs a long task. The view shows a progress bar that should update from the service. Wire the async service correctly so UI updates do not throw.",
-      "expected_output": "The agent annotates the app class with `@EnableAsync`, marks the service method `@Async` returning `CompletableFuture<T>`, has the service accept a progress callback (`Consumer<Integer>` or similar), and the view passes a callback whose body wraps every UI update in `Environment.runLater(...)`. The view also cancels the task with `cancel(true)` on destroy.",
+      "expected_output": "The agent annotates the app class with `@EnableAsync`, marks the service method `@Async` returning `CompletableFuture<T>`, has the service accept a progress callback (`Consumer<Integer>` or similar), and the view reads `Environment.getCurrent()` in the click handler and passes a callback whose body wraps every UI update in `Environment.runLater(env, ...)` with it. The view also cancels the task with `cancel(true)` on destroy.",
       "expectations": [
         "Adds `@EnableAsync` to the Spring Boot application class (in addition to whatever annotations were already there)",
         "Marks the service method `@Async` and returns a `CompletableFuture<T>` (NOT a raw value or `void`)",
-        "Wraps every UI update inside the progress callback AND inside `whenComplete(...)` in `Environment.runLater(...)`, with no exceptions",
+        "Reads `Environment.getCurrent()` in the click handler that starts the task, before calling the service, NOT inside the callback or the service",
+        "Wraps every UI update inside the progress callback AND inside `whenComplete(...)` in `Environment.runLater(env, ...)` with that `Environment` as the first argument, with no exceptions. The one-argument `Environment.runLater(() -> ...)` fails this assertion, that overload is deprecated",
         "Stores the returned `CompletableFuture` in a view field so it can be cancelled later",
         "On view destroy, calls `currentTask.cancel(true)` (the `true` argument interrupts the worker thread)",
-        "Does NOT touch UI components directly from the `@Async` method or the `whenComplete` callback (every UI op goes through `Environment.runLater`)",
+        "Does NOT touch UI components directly from the `@Async` method or the `whenComplete` callback (every UI op goes through `Environment.runLater(env, ...)`)",
         "Does NOT replace the Spring async path with `java.util.Timer`, `javax.swing.Timer`, or a raw `new Thread(...)` started from the view"
       ],
       "files": [
-        "evals/files/v25-spring/pom.xml",
-        "evals/files/v25-spring/src/main/java/com/example/evalbase/Application.java",
+        "evals/files/v26-spring/pom.xml",
+        "evals/files/v26-spring/src/main/java/com/example/evalbase/Application.java",
         "evals/files/eval-4/src/main/java/com/example/evalbase/views/ReportView.java",
         "evals/files/eval-4/src/main/java/com/example/evalbase/services/ReportService.java"
       ]
