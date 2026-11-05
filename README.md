@@ -1,7 +1,5 @@
 # webforJ AI
 
-<video src="https://github.com/user-attachments/assets/613ef8af-1d19-4d1d-ab89-31775b2fa8a9" controls></video>
-
 webforJ's AI tooling, in two parts:
 
 - **craftforJ** — the coding agent inside your running app. It reads the
